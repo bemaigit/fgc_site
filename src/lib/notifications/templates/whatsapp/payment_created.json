@@ -1,0 +1,38 @@
+{
+  "name": "payment_created",
+  "language": "pt_BR",
+  "category": "TRANSACTIONAL",
+  "components": [
+    {
+      "type": "HEADER",
+      "format": "TEXT",
+      "text": "Olá {{1}}",
+      "example": {
+        "header_text": ["João Silva"]
+      }
+    },
+    {
+      "type": "BODY",
+      "text": "Recebemos sua solicitação de pagamento:\n\nValor: {{1}}\nDescrição: {{2}}\nMétodo: {{3}}\n\nClique no link abaixo para efetuar o pagamento. O link expira em 24 horas.",
+      "example": {
+        "body_text": [
+          ["R$ 100,00", "Filiação Anual", "PIX"]
+        ]
+      }
+    },
+    {
+      "type": "FOOTER",
+      "text": "Federação Goiana de Ciclismo"
+    },
+    {
+      "type": "BUTTONS",
+      "buttons": [
+        {
+          "type": "URL",
+          "text": "Pagar Agora",
+          "url": "{{payment_url}}"
+        }
+      ]
+    }
+  ]
+}

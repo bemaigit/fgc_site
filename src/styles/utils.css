@@ -1,0 +1,16 @@
+/* Utility classes */
+
+/* Esconde a barra de rolagem mas mantém a funcionalidade */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE e Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none; /* Chrome, Safari e Opera */
+}
+
+/* Sombra de texto para legibilidade sobre imagens */
+.text-shadow {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8), 0 0 4px rgba(0, 0, 0, 0.5);
+}

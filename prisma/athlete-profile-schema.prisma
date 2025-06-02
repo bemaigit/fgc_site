@@ -1,0 +1,52 @@
+// Modelo para o perfil estendido do atleta (biografia)
+model AthleteProfile {
+  id           String   @id @default(uuid())
+  athleteId    String   @unique
+  biography    String?  // Texto de biografia do atleta
+  achievements String?  // Conquistas e destaques
+  socialMedia  Json?    // Links para redes sociais (Instagram, Twitter, etc.)
+  websiteUrl   String?  // Site pessoal ou blog
+  gender       String?  // Gênero do atleta (MALE ou FEMALE)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relação com o atleta
+  athlete      Athlete  @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+
+  @@index([athleteId])
+}
+
+// Modelo para a galeria de fotos do atleta
+model AthleteGallery {
+  id          String   @id @default(uuid())
+  athleteId   String
+  imageUrl    String   // URL da imagem
+  title       String?  // Título opcional da foto
+  description String?  // Descrição opcional da foto
+  order       Int      @default(0) // Ordem de exibição
+  featured    Boolean  @default(false) // Se é uma imagem destacada
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relação com o atleta
+  athlete     Athlete  @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+
+  @@index([athleteId])
+  @@index([order])
+}
+
+// Modelo para o banner da seção "Conheça nossos Atletas"
+model AthletesSectionBanner {
+  id          String   @id @default(uuid())
+  title       String   // Título do banner
+  subtitle    String?  // Subtítulo opcional
+  description String?  // Descrição curta da seção
+  imageUrl    String   // URL da imagem do banner
+  ctaText     String   @default("Conheça nossos Atletas") // Texto do botão de chamada para ação
+  active      Boolean  @default(true) // Se o banner está ativo
+  order       Int      @default(0) // Para caso haja mais de um banner rotativo
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   String?  // ID do usuário que criou
+  updatedBy   String?  // ID do usuário que atualizou
+}

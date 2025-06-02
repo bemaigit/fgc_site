@@ -1,0 +1,816 @@
+"use client"
+
+import { useSession } from "next-auth/react"
+import { useRouter } from "next/navigation"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { useForm } from "react-hook-form"
+import * as z from "zod"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Checkbox } from "@/components/ui/checkbox"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { useEffect, useState } from "react"
+import { MaskedInput } from "@/components/ui/input-mask"
+import { fetchAddressByCep } from "@/lib/cep"
+
+// Schema de validação atualizado com os novos campos
+const formSchema = z.object({
+  filiationType: z.enum(["NEW", "RENEWAL"], {
+    required_error: "Selecione se é uma nova filiação ou renovação",
+  }),
+  fullName: z.string().min(1, "Nome completo é obrigatório"),
+  cpf: z.string().min(1, "CPF é obrigatório"),
+  email: z.string().email("Email inválido").min(1, "Email é obrigatório"),
+  cbcRegistration: z.string().optional(),
+  birthDate: z.string().min(1, "Data de nascimento é obrigatória"),
+  phone: z.string().min(1, "Telefone é obrigatório"),
+  zipCode: z.string().min(1, "CEP é obrigatório"),
+  address: z.string().min(1, "Endereço é obrigatório"),
+  city: z.string().min(1, "Cidade é obrigatória"),
+  state: z.string().min(1, "Estado é obrigatório"),
+  modalities: z.array(z.string()).min(1, "Selecione pelo menos uma modalidade"),
+  category: z.string().min(1, "Selecione uma categoria"),
+  affiliationType: z.enum(["INDIVIDUAL", "CLUB"], {
+    required_error: "Tipo de filiação é obrigatório",
+  }),
+  clubId: z.string().optional()
+})
+
+interface Category {
+  id: string
+  name: string
+}
+
+interface Modality {
+  id: string
+  name: string
+  price: number
+}
+
+interface Club {
+  id: string
+  clubName: string
+  responsibleName: string
+}
+
+export default function FiliationForm() {
+  const { data: session } = useSession()
+  const router = useRouter()
+  
+  // Estados
+  const [categories, setCategories] = useState<Category[]>([])
+  const [filteredCategories, setFilteredCategories] = useState<Category[]>([])
+  const [modalities, setModalities] = useState<Modality[]>([])
+  const [clubs, setClubs] = useState<Club[]>([])
+  const [selectedModalities, setSelectedModalities] = useState<string[]>([])
+  const [selectedModalityId, setSelectedModalityId] = useState<string>('')
+  const [isIndividual, setIsIndividual] = useState(true)
+  const [total, setTotal] = useState(0)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | undefined>()
+  const [isRenewal, setIsRenewal] = useState(false)
+  const [searchingByCpf, setSearchingByCpf] = useState(false)
+  const [renewalFee, setRenewalFee] = useState(0)
+
+  // Form
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      filiationType: "NEW",
+      fullName: "",
+      cpf: "",
+      email: "",
+      cbcRegistration: "",
+      birthDate: "",
+      phone: "",
+      zipCode: "",
+      address: "",
+      city: "",
+      state: "",
+      modalities: [],
+      category: "",
+      affiliationType: "INDIVIDUAL",
+      clubId: ""
+    },
+  })
+
+  // Efeitos
+  useEffect(() => {
+    if (!session) {
+      router.push('/auth/login')
+    }
+  }, [session, router])
+
+  // Efeito para atualizar estado de renovação quando tipo de filiação mudar
+  useEffect(() => {
+    const subscription = form.watch((value, { name }) => {
+      if (name === 'filiationType') {
+        setIsRenewal(value.filiationType === 'RENEWAL')
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [form.watch])
+
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!session?.user) return
+      
+      try {
+        setLoading(true)
+        console.log('Buscando dados...')
+        
+        const [modalidadesRes, categoriasRes, clubesRes] = await Promise.all([
+          fetch('/api/modalities'),
+          fetch('/api/filiation-categories'),
+          fetch('/api/clubs')
+        ]);
+
+        if (!modalidadesRes.ok || !categoriasRes.ok || !clubesRes.ok) {
+          throw new Error("Erro ao buscar dados");
+        }
+
+        const modalidadesData = await modalidadesRes.json();
+        const categoriasData = await categoriasRes.json();
+        const clubesData = await clubesRes.json();
+
+        // Definir dados
+        setModalities(modalidadesData);
+        setCategories(categoriasData);
+        setFilteredCategories([]); // Inicialmente vazio até que uma modalidade seja selecionada
+        setClubs(clubesData);
+
+        // Calcular o preço total (maior valor entre as modalidades)
+        if (selectedModalities.length > 0) {
+          const selectedModalitiesData = modalidadesData.filter(
+            (m: Modality) => selectedModalities.includes(m.id)
+          );
+          const highestPrice = Math.max(
+            ...selectedModalitiesData.map((m: Modality) => Number(m.price))
+          );
+          setTotal(highestPrice);
+        }
+      } catch (error) {
+        console.error("Erro ao buscar dados:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [session, selectedModalities]);
+
+  // Handlers
+  const handleCepChange = async (cep: string) => {
+    if (cep.replace(/\D/g, '').length !== 8) return;
+    
+    try {
+      const endereco = await fetchAddressByCep(cep);
+      if (endereco) {
+        form.setValue('address', endereco.logradouro);
+        form.setValue('city', endereco.cidade);
+        form.setValue('state', endereco.estado);
+      }
+    } catch (error) {
+      console.error('Erro ao buscar CEP:', error);
+    }
+  };
+
+  // Handler para quando o tipo de filiação muda
+  const handleAffiliationTypeChange = (value: string) => {
+    const isClubMember = value === "CLUB";
+    setIsIndividual(!isClubMember);
+  };
+  
+  // Handler para quando a modalidade muda
+  const handleModalityChange = async (modalityId: string) => {
+    setSelectedModalityId(modalityId);
+    setLoading(true);
+    
+    try {
+      // Buscar categorias para a modalidade selecionada
+      const response = await fetch(`/api/filiation-categories/by-modality?modalityId=${modalityId}`);
+      
+      if (response.ok) {
+        const categoriesData = await response.json();
+        setFilteredCategories(categoriesData);
+        
+        // Se já existia uma categoria selecionada, mas não está nas categorias filtradas, resetar
+        const currentCategory = form.getValues('category');
+        if (currentCategory) {
+          const exists = categoriesData.some((cat: Category) => cat.id === currentCategory);
+          if (!exists) {
+            form.setValue('category', '');
+          }
+        }
+      } else {
+        // Se houver erro, mostrar todas as categorias
+        setFilteredCategories(categories);
+      }
+    } catch (error) {
+      console.error('Erro ao buscar categorias por modalidade:', error);
+      setFilteredCategories(categories);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Função para buscar dados do atleta por CPF para renovação
+  const findAthleteByCpf = async (cpf: string) => {
+    if (!cpf || cpf.length < 11) return;
+    
+    try {
+      setSearchingByCpf(true);
+      setError(undefined);
+      
+      const response = await fetch(`/api/filiacao/verificar-atleta?cpf=${cpf}`);
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Erro ao buscar dados de atleta');
+      }
+      
+      if (!data.found) {
+        throw new Error('CPF não encontrado para renovação. Por favor, verifique o CPF ou selecione "Nova Filiação".');
+      }
+      
+      // Preencher o formulário com os dados do atleta
+      const { athlete } = data;
+      
+      form.setValue('fullName', athlete.fullName);
+      form.setValue('email', athlete.email || '');
+      form.setValue('cbcRegistration', athlete.cbcRegistration || '');
+      form.setValue('birthDate', athlete.birthDate ? new Date(athlete.birthDate).toISOString().split('T')[0] : '');
+      form.setValue('phone', athlete.phone);
+      form.setValue('zipCode', athlete.zipCode);
+      form.setValue('address', athlete.address);
+      form.setValue('city', athlete.city);
+      form.setValue('state', athlete.state);
+      form.setValue('category', athlete.category);
+      form.setValue('modalities', athlete.modalities || []);
+      form.setValue('affiliationType', athlete.isIndividual ? 'INDIVIDUAL' : 'CLUB');
+      form.setValue('clubId', athlete.clubId || '');
+      
+      setSelectedModalities(athlete.modalities || []);
+      setIsIndividual(athlete.isIndividual || true);
+      
+      // Buscar taxa de renovação
+      const currentYear = new Date().getFullYear();
+      const configResponse = await fetch(`/api/filiacao/config/anual?year=${currentYear}`);
+      
+      if (configResponse.ok) {
+        const configData = await configResponse.json();
+        if (configData && configData.renewalFee) {
+          setRenewalFee(Number(configData.renewalFee));
+          setTotal(Number(configData.renewalFee));
+        }
+      }
+      
+    } catch (error: any) {
+      console.error('Erro ao buscar atleta:', error);
+      setError(error.message || 'Erro ao buscar dados do atleta');
+      // Resetar para nova filiação
+      form.setValue('filiationType', 'NEW');
+    } finally {
+      setSearchingByCpf(false);
+    }
+  };
+
+  // Efeito para buscar dados quando CPF mudar e estiver em modo renovação
+  useEffect(() => {
+    const subscription = form.watch((value) => {
+      if (value.filiationType === 'RENEWAL' && value.cpf && value.cpf.length >= 11) {
+        findAthleteByCpf(value.cpf);
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [form.watch]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const values = form.getValues();
+      // Validar formulário
+      const result = await form.trigger();
+      if (!result) {
+        console.log('Form validation failed');
+        return;
+      }
+      
+      // Ajustar valores para envio
+      const isIndividual = values.affiliationType === "INDIVIDUAL";
+      
+      const payload = {
+        ...values,
+        isIndividual: isIndividual,
+        isRenewal: values.filiationType === "RENEWAL"
+      };
+      
+      console.log('Submitting form with payload:', payload);
+      
+      // Enviar formulário
+      const response = await fetch('/api/filiacao/submit', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Erro ao processar filiação');
+      }
+      
+      // Redirecionar para página de pagamento ou confirmação
+      if (data.isFreeModality) {
+        router.push('/filiacao/confirmacao');
+      } else {
+        router.push(`/filiacao/pagamento/${data.paymentId}`);
+      }
+    } catch (error: any) {
+      setError(error.message || 'Erro ao processar sua filiação');
+      console.error('Erro:', error);
+    }
+  }
+
+  if (!session) {
+    return null
+  }
+
+  return (
+    <div className="container mx-auto py-4 px-4 md:px-10 md:py-10">
+      <Card className="w-full overflow-hidden shadow-md mx-auto max-w-4xl">
+        <CardHeader className="border-b">
+          <CardTitle className="text-center text-xl md:text-2xl">Formulário de Filiação</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Form {...form}>
+            <form id="filiation-form" onSubmit={handleSubmit} className="space-y-8">
+              {/* Tipo de Filiação - Primeiro elemento do formulário */}
+              <div className="mb-6">
+                <FormField
+                  control={form.control}
+                  name="filiationType"
+                  render={({ field }) => (
+                    <FormItem className="space-y-1">
+                      <FormLabel className="text-lg font-medium">Tipo de Processo</FormLabel>
+                      <FormControl>
+                        <RadioGroup
+                          onValueChange={(value) => {
+                            field.onChange(value);
+                            // Resetar formulário se mudar de renovação para nova filiação
+                            if (value === "NEW" && isRenewal) {
+                              form.reset({
+                                ...form.getValues(),
+                                filiationType: "NEW",
+                                fullName: "",
+                                email: "",
+                                cbcRegistration: "",
+                                birthDate: "",
+                                phone: "",
+                                zipCode: "",
+                                address: "",
+                                city: "",
+                                state: "",
+                                modalities: [],
+                                category: "",
+                              });
+                              setSelectedModalities([]);
+                              setTotal(0);
+                            }
+                          }}
+                          defaultValue={field.value}
+                          className="flex flex-col space-y-1 mt-2"
+                        >
+                          <FormItem className="flex items-center space-x-3 space-y-0">
+                            <FormControl>
+                              <RadioGroupItem value="NEW" />
+                            </FormControl>
+                            <FormLabel className="font-normal">
+                              Primeira Filiação
+                            </FormLabel>
+                          </FormItem>
+                          <FormItem className="flex items-center space-x-3 space-y-0">
+                            <FormControl>
+                              <RadioGroupItem value="RENEWAL" />
+                            </FormControl>
+                            <FormLabel className="font-normal">
+                              Renovação de Filiação
+                            </FormLabel>
+                          </FormItem>
+                        </RadioGroup>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                {isRenewal && (
+                  <div className="mt-2 p-3 bg-blue-50 rounded-md">
+                    <p className="text-sm text-blue-700">
+                      Digite seu CPF para buscar seus dados. A taxa de renovação para {new Date().getFullYear()} é de 
+                      <strong> R$ {renewalFee.toFixed(2)}</strong>.
+                    </p>
+                    {searchingByCpf && (
+                      <div className="flex items-center mt-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-700 mr-2"></div>
+                        <span className="text-xs text-blue-700">Buscando dados...</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+              
+              {/* Mensagem de erro */}
+              {error && (
+                <div className="bg-red-50 p-3 rounded-md mb-4">
+                  <p className="text-sm text-red-700">{error}</p>
+                </div>
+              )}
+              
+              {/* Mudamos para flex column em dispositivos móveis para evitar sobreposição */}
+              <div className="flex flex-col md:grid md:grid-cols-2 gap-6">
+                {/* Campos pessoais */}
+                <div className="space-y-3 md:space-y-4 mb-6 md:mb-0">
+                  <h3 className="text-lg font-medium border-b pb-2">Dados Pessoais</h3>
+                  
+                  <FormField
+                    control={form.control}
+                    name="fullName"
+                    render={({ field }) => (
+                      <FormItem className="mb-3">
+                        <FormLabel className="block mb-1 text-sm font-medium">Nome Completo</FormLabel>
+                        <FormControl>
+                          <Input {...field} className="w-full" />
+                        </FormControl>
+                        <FormMessage className="text-xs" />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="cpf"
+                    render={({ field }) => (
+                      <FormItem className="mb-3">
+                        <FormLabel className="block mb-1 text-sm font-medium">CPF</FormLabel>
+                        <FormControl>
+                          <MaskedInput 
+                            mask="cpf"
+                            placeholder="000.000.000-00"
+                            {...field}
+                            className="w-full"
+                          />
+                        </FormControl>
+                        <FormMessage className="text-xs" />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem className="mb-3">
+                        <FormLabel className="block mb-1 text-sm font-medium">Email</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="email"
+                            placeholder="seu@email.com"
+                            {...field} 
+                            className="w-full" 
+                          />
+                        </FormControl>
+                        <FormMessage className="text-xs" />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="cbcRegistration"
+                    render={({ field }) => (
+                      <FormItem className="mb-3">
+                        <FormLabel className="block mb-1 text-sm font-medium">Número de Registro CBC (opcional)</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="Número de registro na CBC"
+                            {...field} 
+                            className="w-full" 
+                          />
+                        </FormControl>
+                        <FormMessage className="text-xs" />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="birthDate"
+                    render={({ field }) => (
+                      <FormItem className="mb-3">
+                        <FormLabel className="block mb-1 text-sm font-medium">Data de Nascimento</FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} className="w-full" />
+                        </FormControl>
+                        <FormMessage className="text-xs" />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="phone"
+                    render={({ field }) => (
+                      <FormItem className="mb-3">
+                        <FormLabel className="block mb-1 text-sm font-medium">Telefone</FormLabel>
+                        <FormControl>
+                          <MaskedInput 
+                            mask="phone"
+                            placeholder="(00) 00000-0000"
+                            {...field}
+                            className="w-full"
+                          />
+                        </FormControl>
+                        <FormMessage className="text-xs" />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                {/* Endereço */}
+                <div className="space-y-3 md:space-y-4">
+                  <h3 className="text-lg font-medium border-b pb-2">Endereço</h3>
+                  
+                  <FormField
+                    control={form.control}
+                    name="zipCode"
+                    render={({ field }) => (
+                      <FormItem className="mb-3">
+                        <FormLabel className="block mb-1 text-sm font-medium">CEP</FormLabel>
+                        <FormControl>
+                          <MaskedInput 
+                            mask="cep"
+                            placeholder="00000-000"
+                            {...field}
+                            className="w-full"
+                            onChange={(e) => {
+                              field.onChange(e);
+                              handleCepChange(e.target.value);
+                            }}
+                          />
+                        </FormControl>
+                        <FormMessage className="text-xs" />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="address"
+                    render={({ field }) => (
+                      <FormItem className="mb-3">
+                        <FormLabel className="block mb-1 text-sm font-medium">Endereço</FormLabel>
+                        <FormControl>
+                          <Input {...field} className="w-full" />
+                        </FormControl>
+                        <FormMessage className="text-xs" />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="city"
+                    render={({ field }) => (
+                      <FormItem className="mb-3">
+                        <FormLabel className="block mb-1 text-sm font-medium">Cidade</FormLabel>
+                        <FormControl>
+                          <Input {...field} className="w-full" />
+                        </FormControl>
+                        <FormMessage className="text-xs" />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="state"
+                    render={({ field }) => (
+                      <FormItem className="mb-3">
+                        <FormLabel className="block mb-1 text-sm font-medium">Estado</FormLabel>
+                        <FormControl>
+                          <Input {...field} className="w-full" />
+                        </FormControl>
+                        <FormMessage className="text-xs" />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                {/* Filiação e Total */}
+                <div className="md:col-span-2 space-y-6 mt-6 md:mt-0">
+                  <div className="space-y-3 md:space-y-4">
+                    <h3 className="text-lg font-medium border-b pb-2">Filiação</h3>
+                    
+                    {/* Modalidades */}
+                    <div className="relative z-[60]">
+                      <FormField
+                        control={form.control}
+                        name="modalities"
+                        render={() => (
+                          <FormItem>
+                            <div className="mb-2">
+                              <FormLabel className="block mb-1 text-sm font-medium">Modalidades</FormLabel>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-4 border rounded-lg p-2 md:p-4">
+                              {!loading && modalities.map((modality) => (
+                                <FormField
+                                  key={modality.id}
+                                  control={form.control}
+                                  name="modalities"
+                                  render={({ field }) => {
+                                    // Esta função é chamada para cada modalidade
+                                    const isModalitySelected = field.value?.includes(modality.id);
+                                    return (
+                                      <FormItem
+                                        key={modality.id}
+                                        className="flex flex-row items-start space-x-2 space-y-0 p-1 rounded hover:bg-gray-50"
+                                      >
+                                        <FormControl>
+                                          <Checkbox
+                                            checked={isModalitySelected}
+                                            onCheckedChange={(checked) => {
+                                              const updatedModalities = checked
+                                                ? [...(field.value || []), modality.id]
+                                                : field.value?.filter((value) => value !== modality.id) || []
+                                              
+                                              field.onChange(updatedModalities)
+                                              setSelectedModalities(updatedModalities)
+                                              
+                                              // Se modalidade for selecionada, também atualizamos a modalidade atual
+                                              // para filtrar as categorias
+                                              if (checked) {
+                                                handleModalityChange(modality.id)
+                                              } else if (updatedModalities.length > 0) {
+                                                // Se desmarcar, mas ainda houver modalidades selecionadas,
+                                                // usar a primeira modalidade selecionada
+                                                handleModalityChange(updatedModalities[0])
+                                              } else {
+                                                // Se não houver nenhuma modalidade selecionada, limpar as categorias
+                                                setFilteredCategories([])
+                                                setSelectedModalityId('')
+                                                form.setValue('category', '')
+                                              }
+                                            }}
+                                          />
+                                        </FormControl>
+                                        <FormLabel className="text-xs md:text-sm font-normal cursor-pointer leading-tight">
+                                          {modality.name} - R$ {Number(modality.price).toFixed(2)}
+                                        </FormLabel>
+                                      </FormItem>
+                                    )
+                                  }}
+                                />
+                              ))}
+                            </div>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    {/* Categoria */}
+                    <div className="relative z-[50]">
+                      <FormField
+                        control={form.control}
+                        name="category"
+                        render={({ field }) => (
+                          <FormItem className="mb-4">
+                            <FormLabel className="block mb-1 text-sm font-medium">Categoria</FormLabel>
+                            <FormControl>
+                              <Select
+                                value={field.value}
+                                onValueChange={field.onChange}
+                                disabled={filteredCategories.length === 0}
+                              >
+                                <SelectTrigger className="w-full">
+                                  <SelectValue placeholder={filteredCategories.length > 0 ? "Selecione uma categoria" : "Selecione uma modalidade primeiro"} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {filteredCategories.map((category) => (
+                                    <SelectItem key={category.id} value={category.id}>
+                                      {category.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </FormControl>
+                            <FormMessage className="text-xs" />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    {/* Tipo de Atleta */}
+                    <div className="relative z-[69]">
+                      <FormField
+                        control={form.control}
+                        name="affiliationType"
+                        render={({ field }) => (
+                          <FormItem className="mb-3">
+                            <FormLabel className="block mb-1 text-sm font-medium">Tipo de Atleta</FormLabel>
+                            <FormControl>
+                              <RadioGroup
+                                value={field.value}
+                                onValueChange={(value) => {
+                                  field.onChange(value);
+                                  handleAffiliationTypeChange(value);
+                                }}
+                                className="flex flex-col sm:flex-row sm:space-x-6 space-y-2 sm:space-y-0"
+                              >
+                                <FormItem className="flex items-center space-x-2 space-y-0">
+                                  <FormControl>
+                                    <RadioGroupItem value="INDIVIDUAL" />
+                                  </FormControl>
+                                  <FormLabel className="text-sm font-normal cursor-pointer">
+                                    Atleta Avulso
+                                  </FormLabel>
+                                </FormItem>
+                                <FormItem className="flex items-center space-x-2 space-y-0">
+                                  <FormControl>
+                                    <RadioGroupItem value="CLUB" />
+                                  </FormControl>
+                                  <FormLabel className="text-sm font-normal cursor-pointer">
+                                    Vinculado a Clube
+                                  </FormLabel>
+                                </FormItem>
+                              </RadioGroup>
+                            </FormControl>
+                            <FormMessage className="text-xs" />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    
+                    {/* Clube (mostrado somente quando "Vinculado a Clube" está selecionado) */}
+                    {!isIndividual && (
+                      <div className="relative z-[65]">
+                        <FormField
+                          control={form.control}
+                          name="clubId"
+                          render={({ field }) => (
+                            <FormItem className="mb-4">
+                              <FormLabel className="block mb-1 text-sm font-medium">Clube</FormLabel>
+                              <FormControl>
+                                <Select
+                                  value={field.value}
+                                  onValueChange={field.onChange}
+                                >
+                                  <SelectTrigger className="w-full">
+                                    <SelectValue placeholder="Selecione um clube" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {clubs.map((club) => (
+                                      <SelectItem key={club.id} value={club.id}>
+                                        {club.clubName}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </FormControl>
+                              <FormMessage className="text-xs" />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    )}
+
+                    <div className="pt-4 border-t">
+                      <h3 className="text-lg font-medium mb-2">Total</h3>
+                      <div className="text-xl md:text-2xl font-bold mb-2">
+                        R$ {total.toFixed(2)}
+                      </div>
+                      <p className="text-xs md:text-sm text-gray-600">
+                        * O valor da filiação é baseado na modalidade de maior valor entre as selecionadas.
+                        Você poderá participar de todas as modalidades selecionadas pagando apenas o maior valor.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </form>
+          </Form>
+        </CardContent>
+        <CardFooter className="flex flex-col sm:flex-row gap-3 justify-between">
+          <Button variant="outline" className="w-full sm:w-auto" onClick={() => router.push('/')}>Voltar ao Início</Button>
+          <Button type="submit" form="filiation-form" className="w-full sm:w-auto">Prosseguir para Pagamento</Button>
+        </CardFooter>
+      </Card>
+    </div>
+  )
+}

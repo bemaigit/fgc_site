@@ -1,0 +1,82 @@
+/* Solução definitiva baseada no que funcionou anteriormente */
+.carousel {
+    position: relative !important;
+    overflow: hidden !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    font-size: 0 !important;
+    line-height: 0 !important;
+    display: block !important;
+    height: 200px !important; /* Altura base para mobile */
+}
+
+.carousel-container {
+    display: flex !important;
+    transition: transform 0.5s ease-in-out !important;
+    height: 100% !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+.carousel-slide {
+    flex: 0 0 100% !important;
+    position: relative !important;
+    height: 100% !important;
+    line-height: 0 !important;
+    font-size: 0 !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+.carousel img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    object-position: center !important;
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+}
+
+/* Regras para dispositivos móveis com alturas específicas */
+@media screen and (max-width: 375px) {
+    .carousel {
+        height: 180px !important;
+    }
+}
+
+/* Smartphones normais */
+@media screen and (min-width: 376px) and (max-width: 639px) {
+    .carousel {
+        height: 230px !important;
+    }
+}
+
+/* Tablets pequenos */
+@media screen and (min-width: 640px) and (max-width: 767px) {
+    .carousel {
+        height: 280px !important;
+    }
+}
+
+/* Para dispositivos maiores, usamos aspect-ratio para preservar a proporção da imagem */
+@media screen and (min-width: 768px) {
+    .carousel {
+        height: auto !important;
+        aspect-ratio: 2.66 / 1 !important;
+    }
+}
+
+/* Garantir que não haja espaçamentos em itens internos */
+.carousel * {
+    margin: 0 !important;
+    padding: 0 !important;
+    line-height: 0 !important;
+    font-size: 0 !important;
+}

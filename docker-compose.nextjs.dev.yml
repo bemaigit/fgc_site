@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  nextjs:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: fgc_02-nextjs-dev
+    ports:
+      - "3000:3000"  # Porta da aplicação Next.js
+      - "9229:9229"  # Porta para debug
+    volumes:
+      - .:/app  # Monta todo o diretório do projeto no container
+      - /app/node_modules  # Evita que a pasta node_modules seja sobrescrita
+      - /app/.next  # Evita que a pasta .next seja sobrescrita
+    environment:
+      # Variáveis de ambiente para conexão com serviços
+      - DATABASE_URL=postgresql://fgc:fgc_password@postgres:5432/fgc_dev
+      - SHADOW_DATABASE_URL=postgresql://fgc:fgc_password@postgres_shadow:5432/fgc_shadow
+      - REDIS_URL=redis://redis:6379
+      - REDIS_DISABLED=false
+      - REDIS_TOKEN=NA
+      
+      # Configuração do MinIO
+      - STORAGE_TYPE=minio
+      - MINIO_ENDPOINT=http://minio:9000
+      - MINIO_ACCESS_KEY=fgc_admin
+      - MINIO_SECRET_KEY=fgc_password
+      - MINIO_BUCKET=fgc
+      - MINIO_REGION=us-east-1
+      
+      # Configuração de email
+      - SMTP_HOST=mailhog
+      - SMTP_PORT=1025
+      - EMAIL_FROM=noreply@fgc.org.br
+      
+      # Configuração Next Auth
+      - NEXTAUTH_URL=http://localhost:3000
+      - NEXTAUTH_SECRET=cZV6bktFsDvGPreb80DcgQqcB1f1DhPS3yDc8g5s95s=
+      - NEXT_PUBLIC_BASE_URL=http://localhost:3000
+      
+      # Configurações de Pagamento
+      - MP_WEBHOOK_SECRET=20892261122ff21161683300e8a0de4e
+      - MP_SANDBOX_ACCESS_TOKEN=TEST-8024967414107466-031717-60f009a01f10a47147b20f80629b3972-126602599
+      - NEXT_PUBLIC_MP_SANDBOX_PUBLIC_KEY=TEST-f32477fb-deac-4e9d-a58c-85c68e1a9cef
+      - PAGSEGURO_EMAIL=v73634730879775215842@sandbox.pagseguro.com.br
+      - PAGSEGURO_TOKEN=2C20AC5358084157AFD3DB315C69A68C
+      - PAGSEGURO_WEBHOOK_SECRET=88771252t7285452
+      
+      # Outras configurações
+      - LOG_LEVEL=debug
+      - NEXT_PUBLIC_SKIP_API_CALLS=false
+      - SKIP_ENV_VALIDATION=true
+    restart: unless-stopped
+    networks:
+      - fgc_02_default
+
+# Usar a rede existente do fgc_02
+networks:
+  fgc_02_default:
+    external: true

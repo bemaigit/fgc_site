@@ -1,0 +1,17 @@
+/* Reset de estilos para selects para garantir fundos sólidos */
+[data-radix-select-content] {
+  background-color: white !important;
+  backdrop-filter: none !important;
+}
+
+[data-radix-select-viewport] {
+  background-color: white !important;
+}
+
+[data-radix-select-item] {
+  background-color: white !important;
+}
+
+[data-radix-select-item][data-highlighted] {
+  background-color: #f3f4f6 !important; 
+}

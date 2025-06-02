@@ -1,0 +1,17 @@
+# pack-refs with: peeled fully-peeled sorted 
+a0faf2d2b998a912c298b04206dd586b869cb077 refs/remotes/origin/feat/documents-system
+cd43dba0f31b9957534a080d35867c0a3770c78f refs/remotes/origin/feat/filiation-cards
+b9ef602a1c511c9de75cbb4224cc6bff4131d674 refs/remotes/origin/feat/footer-social-media
+17ef5c607a1b9843136bda4a6bf2aa9ddfd35cd0 refs/remotes/origin/feat/mercadopago-integration
+3c85bc0dddfd66ef0c28be2c342661bf4256c709 refs/remotes/origin/feat/small-banners
+41551431a5552714c7dcfc3276f77629ccc28eea refs/remotes/origin/feat/update-readme
+d3cfbbae17944effb13bced625ebdc7cb64c087c refs/remotes/origin/feature/event-pricing-tiers
+1ad8d77c440e2da5a8e9ca3646153f7baf43e0a6 refs/remotes/origin/feature/notification-system-config
+03fa51625735fea82438b53defc68fa7f9d8e4e4 refs/remotes/origin/feature/reintegrate-rankings
+f79af3edc45871bfba069402ff59d14d726f53f4 refs/remotes/origin/fix/banner-responsiveness
+6841f6c37df5f3915f42a6518882a4e37f30d5d5 refs/remotes/origin/fix/footer-config
+825a82707ba55387d2a231c6a7e95e44d48f914c refs/remotes/origin/fix/home-improvements
+883dff404ff3b0ae3ef6ed21543ab89d0fda4831 refs/remotes/origin/fix/middleware-permissions-v2
+3c6912c956266dab3b1d8ad6ad1fa6cb99f79f53 refs/remotes/origin/fix/middleware-permissions-v3
+1966ac3e5432893314a842a99d737ccb5c877e9c refs/remotes/origin/fix/payment-settings-layout
+cae718a009d02eff2769aadf681fff8cef3552e8 refs/remotes/origin/main

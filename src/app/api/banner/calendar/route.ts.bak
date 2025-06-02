@@ -1,0 +1,96 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { storageService } from '@/lib/storage';
+
+export const runtime = 'nodejs';
+
+// Versão simplificada da API para upload de banner
+export async function POST(req: NextRequest) {
+  try {
+    console.log('[Calendar Banner API] Processando upload de banner');
+    
+    const formData = await req.formData();
+    const file = formData.get('image') as File;
+    
+    if (!file) {
+      return NextResponse.json({ error: 'Nenhum arquivo enviado' }, { status: 400 });
+    }
+
+    const ext = file.name.split('.').pop() || 'jpg';
+    const timestamp = Date.now();
+    const filename = `banners/calendario/banner-principal-${timestamp}.${ext}`;
+    
+    // Converter para buffer
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    
+    // Upload para o MinIO
+    storageService.setPrefix('');
+    await storageService.uploadFile(buffer, {
+      filename: filename,
+      contentType: file.type,
+      size: buffer.length
+    });
+    
+    // URL simples para o banner
+    const bannerUrl = `/api/banner/calendar/image?path=${encodeURIComponent(filename)}&t=${timestamp}`;
+    
+    return NextResponse.json({ 
+      bannerUrl,
+      storedFilename: filename,
+      message: 'Banner enviado com sucesso'
+    });
+    
+  } catch (err) {
+    console.error('[Calendar Banner API] Erro:', err);
+    return NextResponse.json({ error: 'Erro ao processar o banner' }, { status: 500 });
+  }
+}
+
+// Versão simplificada da API para buscar banner
+export async function GET() {
+  try {
+    // URL estática para o placeholder
+    const placeholderUrl = '/images/calendar-banner-placeholder.jpg';
+    
+    try {
+      // Listar arquivos no MinIO com timeout para evitar bloqueio
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Timeout ao listar arquivos')), 2000);
+      });
+      
+      const filesPromise = storageService.listFiles('banners/calendario/');
+      
+      // Race entre o timeout e a busca de arquivos
+      const existingFiles = await Promise.race([filesPromise, timeoutPromise]) as string[];
+      
+      // Encontrar o banner mais recente
+      const bannerFiles = existingFiles.filter(f => f.includes('banner-principal-'));
+      
+      if (bannerFiles.length > 0) {
+        // Pegar o primeiro arquivo (não precisamos ordenar para teste)
+        const filename = bannerFiles[0];
+        return NextResponse.json({
+          bannerUrl: `/api/banner/calendar/image?path=${encodeURIComponent(filename)}&t=${Date.now()}`,
+          storedFilename: filename
+        });
+      }
+    } catch (innerErr) {
+      console.error('[Calendar Banner API] Erro na busca de arquivos:', innerErr);
+      // Não retornar erro, continuar para o fallback
+    }
+    
+    // Fallback para imagem padrão
+    return NextResponse.json({
+      bannerUrl: placeholderUrl,
+      storedFilename: null,
+      message: 'Usando banner padrão'
+    });
+    
+  } catch (err) {
+    console.error('[Calendar Banner API] Erro geral:', err);
+    return NextResponse.json({
+      bannerUrl: '/images/calendar-banner-placeholder.jpg',
+      error: 'Erro ao buscar banner'
+    }, { status: 500 });
+  }
+}

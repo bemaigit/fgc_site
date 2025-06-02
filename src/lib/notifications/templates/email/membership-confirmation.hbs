@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      line-height: 1.6;
+      color: #333;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    .header img {
+      max-width: 200px;
+    }
+    .content {
+      background: #f9f9f9;
+      padding: 20px;
+      border-radius: 5px;
+    }
+    .confirmation-icon {
+      text-align: center;
+      font-size: 48px;
+      color: #1976d2;
+      margin: 20px 0;
+    }
+    .membership-info {
+      margin: 20px 0;
+      padding: 15px;
+      background: #fff;
+      border-radius: 5px;
+      border: 1px solid #eee;
+    }
+    .important-dates {
+      margin: 20px 0;
+      padding: 15px;
+      background: #e3f2fd;
+      border-radius: 5px;
+      border: 1px solid #bbdefb;
+    }
+    .action-button {
+      display: inline-block;
+      background-color: #1976d2;
+      color: white;
+      padding: 10px 20px;
+      text-decoration: none;
+      border-radius: 4px;
+      font-weight: bold;
+      margin: 20px 0;
+    }
+    .benefits {
+      margin: 20px 0;
+    }
+    .benefits ul {
+      margin-left: 20px;
+      padding-left: 0;
+    }
+    .benefits li {
+      margin-bottom: 10px;
+    }
+    .footer {
+      text-align: center;
+      margin-top: 30px;
+      font-size: 12px;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <img src="{{logoUrl}}" alt="FGC Logo">
+    </div>
+    
+    <div class="content">
+      <div class="confirmation-icon">✓</div>
+      
+      <h2>Filiação Confirmada!</h2>
+      
+      <p>Olá {{name}},</p>
+      
+      <p>Sua filiação à <strong>Federação Goiana de Ciclismo</strong> foi confirmada com sucesso!</p>
+      
+      <div class="membership-info">
+        <h3>Detalhes da Filiação</h3>
+        <p><strong>Nome:</strong> {{name}}</p>
+        <p><strong>Categoria:</strong> {{category}}</p>
+        <p><strong>Protocolo:</strong> {{protocol}}</p>
+        {{#if club}}
+        <p><strong>Clube:</strong> {{club}}</p>
+        {{/if}}
+        {{#if modalidades}}
+        <p><strong>Modalidades:</strong> {{modalidades}}</p>
+        {{/if}}
+      </div>
+
+      <div class="important-dates">
+        <h3>Informações Importantes</h3>
+        <p><strong>Data de Ativação:</strong> {{activationDate}}</p>
+        <p><strong>Válido até:</strong> {{expiryDate}}</p>
+      </div>
+      
+      {{#if membershipUrl}}
+      <div style="text-align: center;">
+        <a href="{{membershipUrl}}" class="action-button">Acessar Minha Filiação</a>
+      </div>
+      {{/if}}
+      
+      <div class="benefits">
+        <h3>Benefícios da sua Filiação:</h3>
+        <ul>
+          <li>Participação em eventos oficiais da Federação Goiana de Ciclismo</li>
+          <li>Pontuação no ranking estadual e classificação para campeonatos nacionais</li>
+          <li>Descontos em eventos e serviços de parceiros</li>
+          <li>Suporte prioritário em eventos</li>
+          <li>Acesso ao cartão digital de filiação</li>
+        </ul>
+      </div>
+      
+      <p>Agradecemos sua filiação e estamos à disposição para qualquer dúvida.</p>
+    </div>
+
+    <div class="footer">
+      <p>Este é um e-mail automático, por favor não responda.</p>
+      <p>Federação Goiana de Ciclismo - {{year}}</p>
+    </div>
+  </div>
+</body>
+</html>

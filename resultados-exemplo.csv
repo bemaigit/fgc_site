@@ -1,0 +1,41 @@
+Posição,Atleta,Clube,Categoria,Resultado
+1,João Silva,Clube Ciclismo Goiânia,JUNIOR,00:45.425
+2,Pedro Almeida,Pedal Livre,JUNIOR,00:46.089
+3,Lucas Oliveira,Ciclistas Unidos,JUNIOR,00:47.350
+4,Gabriel Santos,Bike Club,JUNIOR,00:48.969
+5,Matheus Costa,Pedalada Radical,JUNIOR,00:49.181
+6,Felipe Souza,Clube Ciclismo Goiânia,JUNIOR,00:50.223
+7,Rafael Pereira,Pedal Livre,JUNIOR,00:51.445
+8,Gustavo Lima,Ciclistas Unidos,JUNIOR,00:52.678
+1,Ana Carolina,Clube Ciclismo Goiânia,SUB-23 FEMININO,00:42.841
+2,Mariana Ferreira,Pedal Livre,SUB-23 FEMININO,00:43.567
+3,Juliana Ribeiro,Ciclistas Unidos,SUB-23 FEMININO,00:44.890
+4,Camila Martins,Bike Club,SUB-23 FEMININO,00:45.234
+5,Larissa Gomes,Pedalada Radical,SUB-23 FEMININO,00:46.789
+6,Fernanda Lima,Clube Ciclismo Goiânia,SUB-23 FEMININO,00:47.123
+7,Patrícia Soares,Pedal Livre,SUB-23 FEMININO,00:48.456
+8,Bianca Oliveira,Ciclistas Unidos,SUB-23 FEMININO,00:49.789
+1,Carlos Eduardo,Clube Ciclismo Goiânia,SUB-30,00:40.467
+2,Rodrigo Mendes,Pedal Livre,SUB-30,00:41.234
+3,Bruno Cardoso,Ciclistas Unidos,SUB-30,00:42.567
+4,Daniel Alves,Bike Club,SUB-30,00:43.890
+5,Thiago Moreira,Pedalada Radical,SUB-30,00:44.123
+6,Leonardo Dias,Clube Ciclismo Goiânia,SUB-30,00:45.456
+7,Marcelo Vieira,Pedal Livre,SUB-30,00:46.789
+8,Ricardo Nunes,Ciclistas Unidos,SUB-30,00:47.012
+1,Isabela Costa,Clube Ciclismo Goiânia,ELITE FEMININO,00:38.123
+2,Amanda Rocha,Pedal Livre,ELITE FEMININO,00:39.456
+3,Beatriz Campos,Ciclistas Unidos,ELITE FEMININO,00:40.789
+4,Carolina Santos,Bike Club,ELITE FEMININO,00:41.012
+5,Débora Oliveira,Pedalada Radical,ELITE FEMININO,00:42.345
+6,Elisa Ferreira,Clube Ciclismo Goiânia,ELITE FEMININO,00:43.678
+7,Flávia Martins,Pedal Livre,ELITE FEMININO,00:44.901
+8,Gabriela Lima,Ciclistas Unidos,ELITE FEMININO,00:45.234
+1,André Oliveira,Clube Ciclismo Goiânia,ELITE MASCULINO,00:35.789
+2,Bernardo Silva,Pedal Livre,ELITE MASCULINO,00:36.012
+3,César Almeida,Ciclistas Unidos,ELITE MASCULINO,00:37.345
+4,Diego Santos,Bike Club,ELITE MASCULINO,00:38.678
+5,Eduardo Costa,Pedalada Radical,ELITE MASCULINO,00:39.901
+6,Fábio Souza,Clube Ciclismo Goiânia,ELITE MASCULINO,00:40.234
+7,Guilherme Pereira,Pedal Livre,ELITE MASCULINO,00:41.567
+8,Henrique Lima,Ciclistas Unidos,ELITE MASCULINO,00:42.890

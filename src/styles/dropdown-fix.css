@@ -1,0 +1,20 @@
+/* Correções complementares para problemas de dropdown */
+.radix-dropdown {
+  background-color: white !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+}
+
+/* Outros elementos que podem estar causando problemas */
+div[role="listbox"],
+[role="menu"],
+.dropdown-content,
+.menu-content {
+  background-color: white !important;
+  backdrop-filter: none !important;
+}
+
+/* Aumentar a especificidade para garantir que os estilos sejam aplicados */
+html body [data-radix-popper-content-wrapper] {
+  background-color: white !important;
+  backdrop-filter: none !important;
+}

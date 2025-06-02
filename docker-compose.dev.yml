@@ -1,0 +1,152 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: fgc
+      POSTGRES_PASSWORD: fgc_password
+      POSTGRES_DB: fgc_dev
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  postgres_shadow:
+    image: postgres:16-alpine
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: fgc
+      POSTGRES_PASSWORD: fgc_password
+      POSTGRES_DB: fgc_shadow
+    volumes:
+      - postgres_shadow_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  minio:
+    image: minio/minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: fgc_admin
+      MINIO_ROOT_PASSWORD: fgc_password
+    volumes:
+      - minio_data:/data
+    command: server --console-address ":9001" /data
+
+  mailhog:
+    image: mailhog/mailhog
+    ports:
+      - "1025:1025" # SMTP
+      - "8025:8025" # Interface Web
+
+  # ngrok:
+  #   image: ngrok/ngrok:latest
+  #   ports:
+  #     - "4040:4040"
+  #   environment:
+  #     - NGROK_AUTHTOKEN=2t63zAHibQTagnPOBrvqj3WJlip_5jUfJQnDbDDn7xbXmnomo
+  #   command:
+  #     - "http"
+  #     - "host.docker.internal:3000"
+  #   networks:
+  #     - default
+  #   extra_hosts:
+  #     - "host.docker.internal:host-gateway"
+  #   restart: unless-stopped
+    
+  # Cloudflare Tunnel para substituir o ngrok
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared
+    restart: unless-stopped
+    command: tunnel run
+    volumes:
+      - ~/.cloudflared:/etc/cloudflared
+    networks:
+      - default
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - evolution-api
+      - minio
+
+  evolution-api:
+    image: atendai/evolution-api:latest
+    container_name: evolution-api
+    restart: always
+    ports:
+      - "8080:8080"
+    networks:
+      - default
+    environment:
+      # Configurações Gerais
+      - SERVER_URL=http://localhost:8080
+      - AUTHENTICATION_TYPE=apikey
+      - AUTHENTICATION_API_KEY=429683C4C977415CAAFCCE10F7D57E11
+      - AUTHENTICATION_EXPOSE_IN_FETCH_INSTANCES=true
+      - DEL_INSTANCE=false
+      - QRCODE_LIMIT=1902
+      - LANGUAGE=pt-BR
+      
+      # Configuração do Cliente
+      - CONFIG_SESSION_PHONE_VERSION=2.3000.1021437297
+      - CONFIG_SESSION_PHONE_CLIENT=Admin
+      - CONFIG_SESSION_PHONE_NAME=Chrome
+      
+      # Configuração do Banco de Dados (conexão com o PostgreSQL)
+      - DATABASE_ENABLED=true
+      - DATABASE_PROVIDER=postgresql
+      - DATABASE_CONNECTION_URI=postgresql://fgc:fgc_password@postgres:5432/evolution_api
+      - DATABASE_CONNECTION_CLIENT_NAME=evolution
+      - DATABASE_SAVE_DATA_INSTANCE=true
+      - DATABASE_SAVE_DATA_NEW_MESSAGE=true
+      - DATABASE_SAVE_MESSAGE_UPDATE=true
+      - DATABASE_SAVE_DATA_CONTACTS=true
+      - DATABASE_SAVE_DATA_CHATS=true
+      
+      # Webhook para integração com o sistema da FGC
+      - WEBHOOK_GLOBAL_ENABLED=true
+      - WEBHOOK_GLOBAL_URL=http://host.docker.internal:3000/api/webhooks/whatsapp
+      - WEBHOOK_EVENTS=all
+      
+      # Configuração do Cache Redis
+      - CACHE_REDIS_ENABLED=true
+      - CACHE_REDIS_URI=redis://redis:6379/8
+      - CACHE_REDIS_PREFIX_KEY=evolution
+      - CACHE_REDIS_SAVE_INSTANCES=true
+      - CACHE_LOCAL_ENABLED=false
+      
+      # Outras configurações
+      - LOG_LEVEL=ERROR
+      - LOG_COLOR=true
+      - INSTANCE_MAX_RETRY_QR=3
+      - INSTANCE_MAX_MSG_QUEUE=1000
+      - INSTANCE_INACTIVITY_TIME=10
+      - INSTANCE_RECONNECT=true
+      - TELEMETRY=false
+      
+    volumes:
+      - ./evolution-instances:/evolution/instances
+      - ./evolution-store:/evolution/store
+      - ./evolution-data:/evolution/data
+      - ./evolution-metrics:/evolution/metrics
+      - ./evolution-userDataDir:/evolution/userDataDir
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - redis
+
+volumes:
+  postgres_data:
+  postgres_shadow_data:
+  redis_data:
+  minio_data:

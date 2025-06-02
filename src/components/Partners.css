@@ -1,0 +1,78 @@
+.partners-section {
+    width: 100%;
+}
+
+.partners-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 2rem;
+    align-items: center;
+    justify-items: center;
+    width: 100%;
+    max-width: 1920px;
+    margin: 0 auto;
+}
+
+.partner-item {
+    width: 150px;
+    height: 100px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.partner-link {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.3s ease;
+}
+
+.partner-link:hover {
+    transform: scale(1.05);
+}
+
+.partner-logo {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+/* Breakpoints responsivos */
+@media (max-width: 1280px) {
+    .partners-grid {
+        grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+        gap: 1.5rem;
+    }
+    
+    .partner-item {
+        width: 130px;
+        height: 90px;
+    }
+}
+
+@media (max-width: 768px) {
+    .partners-grid {
+        grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+        gap: 1rem;
+    }
+    
+    .partner-item {
+        width: 110px;
+        height: 80px;
+    }
+}
+
+@media (max-width: 640px) {
+    .partners-grid {
+        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+        gap: 0.875rem;
+    }
+    
+    .partner-item {
+        width: 100px;
+        height: 70px;
+    }
+}

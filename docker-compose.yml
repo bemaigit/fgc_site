@@ -1,0 +1,60 @@
+version: '3.8'
+services:
+  postgres:
+    image: postgres:15
+    container_name: fgc_postgres
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: fgc_dev
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    mem_limit: 250m
+    mem_reservation: 150m
+
+  mailhog:
+    image: mailhog/mailhog
+    container_name: fgc_mailhog
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    mem_limit: 100m
+    mem_reservation: 50m
+
+  ngrok:
+    image: ngrok/ngrok:latest
+    container_name: fgc_ngrok
+    ports:
+      - "4040:4040"
+    environment:
+      - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN}
+    command:
+      - "http"
+      - "host.docker.internal:3000"
+    depends_on:
+      - mailhog
+    mem_limit: 100m
+    mem_reservation: 50m
+
+  redis:
+    image: redis:7-alpine
+    container_name: fgc_redis
+    ports:
+      - "6379:6379"
+    mem_limit: 100m
+    mem_reservation: 50m
+
+  minio:
+    image: minio/minio
+    container_name: fgc_minio
+    ports:
+      - "9000-9001:9000-9001"
+    mem_limit: 200m
+    mem_reservation: 100m
+    command: server /data --console-address ":9001"
+
+volumes:
+  postgres_data:

@@ -1,0 +1,39 @@
+/* Correções globais para remover fundos transparentes nos selects */
+
+/* Conteúdo do dropdown */
+[data-radix-popper-content-wrapper] {
+  background-color: white !important;
+  backdrop-filter: none !important;
+}
+
+/* Container do dropdown */
+[data-radix-select-content] {
+  background-color: white !important;
+  backdrop-filter: none !important;
+}
+
+/* Viewport (área de scroll) */
+[data-radix-select-viewport] {
+  background-color: white !important;
+}
+
+/* Itens individuais */
+[data-radix-select-item] {
+  background-color: white !important;
+}
+
+/* Item destacado por hover ou foco */
+[data-radix-select-item][data-highlighted] {
+  background-color: #f3f4f6 !important;
+}
+
+/* Trigger do select */
+.select-trigger, [class*="SelectTrigger"] {
+  background-color: white !important;
+}
+
+/* Sobrescrever qualquer outro seletor que possa estar causando transparência */
+.SelectContent, .select-content {
+  background-color: white !important;
+  backdrop-filter: none !important;
+}

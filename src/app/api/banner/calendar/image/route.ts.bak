@@ -1,0 +1,129 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { storageService } from '@/lib/storage';
+
+export const runtime = 'nodejs';
+
+export async function GET(req: NextRequest) {
+  try {
+    // Log para debug
+    console.log('[Proxy Calendar Banner] Requisição recebida');
+    console.log('[Proxy Calendar Banner] URL:', req.url);
+    console.log('[Proxy Calendar Banner] Params:', Object.fromEntries(req.nextUrl.searchParams.entries()));
+    
+    const { searchParams } = req.nextUrl;
+    const path = searchParams.get('path');
+    const t = searchParams.get('t'); // timestamp para evitar cache
+    
+    let targetPath: string;
+    
+    // Se um caminho específico foi fornecido, usá-lo
+    if (path) {
+      console.log(`[Proxy Calendar Banner] Caminho especificado: ${path}`);
+      targetPath = path;
+      
+      // Verificar se o caminho já tem o prefixo 'banners/calendario/'
+      if (!path.startsWith('banners/') && !path.startsWith('banners/calendario/')) {
+        targetPath = `banners/calendario/${path}`;
+      }
+    } else {
+      // Se nenhum caminho foi especificado, usar o nome padrão
+      console.log('[Proxy Calendar Banner] Usando caminho padrão');
+      targetPath = 'banners/calendario/banner-principal.jpg';
+    }
+    
+    console.log(`[Proxy Calendar Banner] Buscando arquivo: ${targetPath}`);
+    
+    try {
+      // Definir prefixo para a pasta correta
+      storageService.setPrefix('');
+      
+      // Buscar a imagem do armazenamento
+      const fileStream = await storageService.getFileStream(targetPath);
+      
+      if (!fileStream) {
+        console.log('[Proxy Calendar Banner] Arquivo não encontrado');
+        return new NextResponse('Imagem não encontrada', { status: 404 });
+      }
+      
+      // Converter ReadableStream para Buffer
+      const chunks: Buffer[] = [];
+      for await (const chunk of fileStream) {
+        chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
+      }
+      
+      const buffer = Buffer.concat(chunks);
+      
+      // Determinar o tipo MIME baseado na extensão do arquivo
+      let contentType = 'image/png'; // Padrão para imagens
+      
+      if (targetPath.endsWith('.jpg') || targetPath.endsWith('.jpeg')) {
+        contentType = 'image/jpeg';
+      } else if (targetPath.endsWith('.webp')) {
+        contentType = 'image/webp';
+      } else if (targetPath.endsWith('.svg')) {
+        contentType = 'image/svg+xml';
+      } else if (targetPath.endsWith('.gif')) {
+        contentType = 'image/gif';
+      }
+      
+      // Adicionar headers para a resposta
+      const headers = new Headers();
+      headers.set('Content-Type', contentType);
+      headers.set('Content-Length', buffer.length.toString());
+      
+      // Adicionar cache headers
+      headers.set('Cache-Control', 'public, max-age=300'); // 5 minutos
+      
+      console.log('[Proxy Calendar Banner] Retornando imagem com sucesso');
+      return new NextResponse(buffer, {
+        status: 200,
+        headers
+      });
+    } catch (error) {
+      console.error(`[Proxy Calendar Banner] Erro ao obter imagem ${targetPath}:`, error);
+      
+      // Se o erro for devido ao caminho não encontrado, tentar buscar o banner padrão
+      if (targetPath !== 'banners/calendario/banner-principal.jpg') {
+        console.log('[Proxy Calendar Banner] Tentando carregar o banner padrão');
+        try {
+          // Tentar carregar o banner padrão
+          const defaultStream = await storageService.getFileStream('banners/calendario/banner-principal.jpg');
+          
+          if (!defaultStream) {
+            throw new Error('Banner padrão não encontrado');
+          }
+          
+          // Converter ReadableStream para Buffer
+          const chunks: Buffer[] = [];
+          for await (const chunk of defaultStream) {
+            chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
+          }
+          
+          const buffer = Buffer.concat(chunks);
+          
+          // Adicionar headers para a resposta
+          const headers = new Headers();
+          headers.set('Content-Type', 'image/jpeg');
+          headers.set('Content-Length', buffer.length.toString());
+          headers.set('Cache-Control', 'public, max-age=300');
+          
+          console.log('[Proxy Calendar Banner] Retornando banner padrão');
+          return new NextResponse(buffer, {
+            status: 200,
+            headers
+          });
+        } catch (fallbackError) {
+          console.error('[Proxy Calendar Banner] Erro ao carregar banner padrão:', fallbackError);
+        }
+      }
+      
+      // Se chegamos aqui, todas as tentativas falharam
+      console.log('[Proxy Calendar Banner] Retornando imagem padrão como fallback');
+      // Redirecionar para uma imagem local como último recurso
+      return NextResponse.redirect(new URL('/images/calendar-banner-placeholder.jpg', req.nextUrl.origin));
+    }
+  } catch (err) {
+    console.error('[Proxy Calendar Banner] Erro geral:', err);
+    return new NextResponse('Erro ao processar imagem', { status: 500 });
+  }
+}

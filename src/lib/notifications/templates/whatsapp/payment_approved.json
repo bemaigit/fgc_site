@@ -1,0 +1,38 @@
+{
+  "name": "payment_approved",
+  "language": "pt_BR",
+  "category": "TRANSACTIONAL",
+  "components": [
+    {
+      "type": "HEADER",
+      "format": "TEXT",
+      "text": "Pagamento Aprovado! 🎉",
+      "example": {
+        "header_text": ["Pagamento Aprovado! 🎉"]
+      }
+    },
+    {
+      "type": "BODY",
+      "text": "Olá {{1}},\n\nSeu pagamento foi aprovado com sucesso!\n\nValor: {{2}}\nDescrição: {{3}}\nData: {{4}}\n\nVocê pode acessar sua área do atleta através do link abaixo.",
+      "example": {
+        "body_text": [
+          ["João Silva", "R$ 100,00", "Filiação Anual", "08/02/2025"]
+        ]
+      }
+    },
+    {
+      "type": "FOOTER",
+      "text": "Federação Goiana de Ciclismo"
+    },
+    {
+      "type": "BUTTONS",
+      "buttons": [
+        {
+          "type": "URL",
+          "text": "Acessar Área do Atleta",
+          "url": "{{dashboard_url}}"
+        }
+      ]
+    }
+  ]
+}

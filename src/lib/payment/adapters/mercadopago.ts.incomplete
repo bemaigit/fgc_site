@@ -1,0 +1,120 @@
+import { 
+  CreatePaymentInput, 
+  PaymentResult, 
+  PaymentStatus,
+  PaymentMethod,
+  PaymentGatewayConfig,
+  PaymentGateway,
+  PaymentProvider,
+  WebhookData,
+  MercadoPagoCredentials,
+  InstallmentOption
+} from "@/lib/payment/types"
+import { createMercadoPagoClient, verifyMercadoPagoSignature } from "../utils/mercadopago"
+import crypto from 'crypto'
+
+export class MercadoPagoGateway implements PaymentGateway {
+  private client: any;
+  private credentials: MercadoPagoCredentials;
+  private config: PaymentGatewayConfig;
+
+  constructor(credentials: MercadoPagoCredentials) {
+    this.credentials = credentials
+    this.config = { credentials }
+    this.client = createMercadoPagoClient(credentials.access_token)
+  }
+
+  private getAccessToken(): string {
+    this.validateConfig()
+    return this.config.credentials.access_token as string
+  }
+
+  private validateConfig() {
+    if (!this.config) {
+      throw new Error("Configuração não definida")
+    }
+  }
+
+  /**
+   * Consulta as opções de parcelamento disponíveis no Mercado Pago
+   * @param amount Valor total do pagamento
+   * @param paymentMethodId ID do método de pagamento (opcional)
+   * @returns Array com as opções de parcelamento disponíveis
+   */
+  async getInstallmentOptions(amount: number, paymentMethodId?: string): Promise<InstallmentOption[]> {
+    try {
+      this.validateConfig()
+
+      const params: any = {
+        amount: amount.toString()
+      };
+
+      if (paymentMethodId) {
+        params.payment_method_id = paymentMethodId;
+      }
+
+      // Consultar API do Mercado Pago para obter opções de parcelamento
+      const response = await fetch(
+        `https://api.mercadopago.com/v1/payment_methods/installments?${new URLSearchParams(params).toString()}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${this.getAccessToken()}`
+          }
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Erro ao consultar opções de parcelamento: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      // Se não houver opções de parcelamento, retornar opção padrão (pagamento à vista)
+      if (!data || !Array.isArray(data) || data.length === 0) {
+        return [{
+          installments: 1,
+          installmentAmount: amount,
+          totalAmount: amount,
+          message: `1x de ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(amount)} à vista`
+        }];
+      }
+
+      // Transformar resposta da API em formato padronizado
+      const cardOptions = data[0]; // Pegar primeiro tipo de cartão (geralmente visa/master)
+      
+      return cardOptions.payer_costs.map((option: any) => ({
+        installments: option.installments,
+        installmentAmount: option.installment_amount,
+        totalAmount: option.total_amount,
+        message: option.recommended_message || 
+          `${option.installments}x de ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(option.installment_amount)}`
+      }));
+    } catch (error) {
+      console.error("Erro ao obter opções de parcelamento:", error);
+      
+      // Fallback: retornar opções de parcelamento simples sem juros
+      const installmentOptions = [1, 2, 3, 6, 12];
+      return installmentOptions.map(option => ({
+        installments: option,
+        installmentAmount: amount / option,
+        totalAmount: amount,
+        message: `${option}x de ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(amount / option)}${option === 1 ? ' à vista' : ''}`
+      }));
+    }
+  }
+
+  async createPayment(input: CreatePaymentInput): Promise<PaymentResult> {
+    try {
+      this.validateConfig()
+      
+      console.log("Criando pagamento no Mercado Pago com URL de notificação:", input.notificationUrl);
+      
+      // Verificar se a URL de notificação é válida
+      let notificationUrl = input.notificationUrl;
+      if (!notificationUrl || !notificationUrl.startsWith('http')) {
+        // Usar URL padrão se não for fornecida uma válida
+        notificationUrl = `${process.env.NEXT_PUBLIC_API_URL}/api/payments/gateway/webhook`;
+        console.log("Usando URL de notificação padrão:", notificationUrl);
+      }
+      
+      // Criar payload base

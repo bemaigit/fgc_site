@@ -1,0 +1,33 @@
+/* Estilos para a visualização de prévia do banner */
+.preview-container {
+  border: 1px solid #e5e7eb;
+  border-radius: 0.375rem;
+  padding: 1rem;
+  background-color: #f9fafb;
+  margin-top: 1rem;
+}
+
+.preview-image-container {
+  max-width: 400px;
+  margin: 0 auto;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border-radius: 0.375rem;
+  overflow: hidden;
+  position: relative;
+}
+
+.preview-image {
+  width: 100%;
+  height: auto;
+  max-height: 225px;
+  object-fit: contain;
+  background-color: white;
+  display: block;
+}
+
+.preview-info {
+  margin-top: 0.5rem;
+  text-align: center;
+  font-size: 0.75rem;
+  color: #6b7280;
+}

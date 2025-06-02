@@ -1,0 +1,9 @@
+# Arquivos temporários
+.env
+.env.*
+public/sw.js
+public/workbox-*.js
+
+# Outros
+contrato-mandato.txt
+.eslintrc.json

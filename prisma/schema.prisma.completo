@@ -1,0 +1,1372 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Account {
+  id                String  @id
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  User              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Athlete {
+  id                                    String                 @id
+  userId                                String                 @unique
+  fullName                              String
+  cpf                                   String                 @unique
+  birthDate                             DateTime
+  address                               String
+  city                                  String
+  state                                 String
+  zipCode                               String
+  phone                                 String
+  modalities                            String[]
+  category                              String
+  paymentStatus                         String
+  paymentId                             String?
+  active                                Boolean                @default(true)
+  createdAt                             DateTime               @default(now())
+  updatedAt                             DateTime
+  email                                 String?
+  cbcRegistration                       String?
+  clubId                                String?
+  isIndividual                          Boolean?               @default(false)
+  registrationYear                      Int?                   @default(dbgenerated("EXTRACT(year FROM CURRENT_DATE)"))
+  isRenewal                             Boolean?               @default(false)
+  firstRegistrationDate                 DateTime?              @default(now()) @db.Timestamptz(6)
+  currentRegistrationDate               DateTime?              @default(now()) @db.Timestamptz(6)
+  expirationDate                        DateTime?              @default(dbgenerated("make_date((EXTRACT(year FROM CURRENT_DATE))::integer, 12, 31)")) @db.Timestamptz(6)
+  registeredByUserId                    String?
+  hasOwnAccount                         Boolean?               @default(true)
+  User_Athlete_userIdToUser             User                   @relation("Athlete_userIdToUser", fields: [userId], references: [id])
+  Club                                  Club?                  @relation(fields: [clubId], references: [id], onUpdate: NoAction, map: "FK_Athlete_Club")
+  User_Athlete_registeredByUserIdToUser User?                  @relation("Athlete_registeredByUserIdToUser", fields: [registeredByUserId], references: [id], onUpdate: NoAction, map: "FK_Athlete_RegisteredByUser")
+  AthleteStatusHistory                  AthleteStatusHistory[]
+  Champion                              Champion[]
+  ChampionEntry                         ChampionEntry[]
+  Payment                               Payment[]
+  PaymentTransaction                    PaymentTransaction[]
+  Ranking                               Ranking[]
+  RankingEntry                          RankingEntry[]
+  RankingStageResult                    RankingStageResult[]
+
+  @@index([clubId], map: "IDX_Athlete_clubId")
+  @@index([expirationDate], map: "IDX_Athlete_expirationDate")
+  @@index([registeredByUserId], map: "IDX_Athlete_registeredByUserId")
+  @@index([registrationYear], map: "IDX_Athlete_registrationYear")
+}
+
+model AthleteStatusHistory {
+  id                                             String    @id
+  athleteId                                      String
+  previousClubId                                 String?
+  newClubId                                      String?
+  wasIndividual                                  Boolean
+  becameIndividual                               Boolean
+  reason                                         String?
+  paymentId                                      String?
+  createdAt                                      DateTime? @default(now()) @db.Timestamptz(6)
+  Athlete                                        Athlete   @relation(fields: [athleteId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "FK_AthleteStatusHistory_Athlete")
+  Club_AthleteStatusHistory_newClubIdToClub      Club?     @relation("AthleteStatusHistory_newClubIdToClub", fields: [newClubId], references: [id], onUpdate: NoAction, map: "FK_AthleteStatusHistory_NewClub")
+  Payment                                        Payment?  @relation(fields: [paymentId], references: [id], onUpdate: NoAction, map: "FK_AthleteStatusHistory_Payment")
+  Club_AthleteStatusHistory_previousClubIdToClub Club?     @relation("AthleteStatusHistory_previousClubIdToClub", fields: [previousClubId], references: [id], onUpdate: NoAction, map: "FK_AthleteStatusHistory_PreviousClub")
+
+  @@index([athleteId], map: "IDX_AthleteStatusHistory_athleteId")
+  @@index([createdAt], map: "IDX_AthleteStatusHistory_createdAt")
+  @@index([newClubId], map: "IDX_AthleteStatusHistory_newClubId")
+  @@index([previousClubId], map: "IDX_AthleteStatusHistory_previousClubId")
+}
+
+model Banner {
+  id        String   @id
+  title     String
+  image     String
+  link      String?
+  order     Int
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime
+  createdBy String?
+  updatedBy String?
+}
+
+model Category {
+  id             String           @id
+  name           String
+  slug           String           @unique
+  description    String?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime
+  CategoryToNews CategoryToNews[]
+}
+
+model Champion {
+  id        String   @id
+  athleteId String
+  modality  String
+  category  String
+  gender    String
+  position  Int
+  city      String
+  team      String?
+  year      Int
+  createdAt DateTime @default(now())
+  Athlete   Athlete  @relation(fields: [athleteId], references: [id])
+
+  @@index([athleteId])
+  @@index([modality, category, gender])
+  @@index([year])
+}
+
+model ChampionCategory {
+  id               String           @id
+  name             String
+  modalityId       String
+  description      String?
+  createdAt        DateTime         @default(now())
+  ChampionModality ChampionModality @relation(fields: [modalityId], references: [id], onDelete: Cascade)
+  ChampionEntry    ChampionEntry[]
+
+  @@index([modalityId])
+}
+
+model ChampionEntry {
+  id                String            @id
+  athleteId         String
+  modalityId        String
+  categoryId        String
+  gender            String
+  position          Int
+  city              String
+  team              String?
+  eventId           String
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @default(now())
+  Athlete           Athlete           @relation(fields: [athleteId], references: [id])
+  ChampionCategory  ChampionCategory  @relation(fields: [categoryId], references: [id])
+  ChampionshipEvent ChampionshipEvent @relation(fields: [eventId], references: [id])
+  ChampionModality  ChampionModality  @relation(fields: [modalityId], references: [id])
+
+  @@index([athleteId])
+  @@index([eventId])
+  @@index([modalityId, categoryId, gender], map: "ChampionEntry_modality_category_gender_idx")
+}
+
+model ChampionModality {
+  id               String             @id
+  name             String
+  description      String?
+  createdAt        DateTime           @default(now())
+  ChampionCategory ChampionCategory[]
+  ChampionEntry    ChampionEntry[]
+}
+
+model ChampionshipEvent {
+  id            String          @id
+  name          String
+  year          Int
+  description   String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @default(now())
+  ChampionEntry ChampionEntry[]
+
+  @@index([year])
+}
+
+model City {
+  id        String   @id
+  name      String
+  stateId   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime
+  State     State    @relation(fields: [stateId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  Event     Event[]
+
+  @@index([stateId])
+}
+
+model Club {
+  id                                                             String                 @id
+  responsibleName                                                String
+  clubName                                                       String
+  cnpj                                                           String                 @unique
+  address                                                        String
+  city                                                           String
+  state                                                          String
+  zipCode                                                        String
+  phone                                                          String
+  email                                                          String
+  paymentStatus                                                  String                 @default("PENDING")
+  paymentId                                                      String?
+  active                                                         Boolean                @default(true)
+  createdAt                                                      DateTime               @default(now())
+  updatedAt                                                      DateTime
+  Athlete                                                        Athlete[]
+  AthleteStatusHistory_AthleteStatusHistory_newClubIdToClub      AthleteStatusHistory[] @relation("AthleteStatusHistory_newClubIdToClub")
+  AthleteStatusHistory_AthleteStatusHistory_previousClubIdToClub AthleteStatusHistory[] @relation("AthleteStatusHistory_previousClubIdToClub")
+  EventTopResult                                                 EventTopResult[]
+  Payment                                                        Payment[]
+}
+
+model ClubFeeSettings {
+  id                 String   @id
+  newRegistrationFee Decimal  @db.Decimal(10, 2)
+  annualRenewalFee   Decimal  @db.Decimal(10, 2)
+  active             Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime
+}
+
+model Country {
+  id        String   @id
+  name      String
+  code      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime
+  Event     Event[]
+  State     State[]
+
+  @@index([code])
+}
+
+model Document {
+  id          String   @id
+  title       String
+  description String?
+  fileUrl     String
+  category    String?  @default("GERAL")
+  downloads   Int      @default(0)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime
+  createdBy   String
+  fileName    String
+  fileSize    Int
+  mimeType    String
+  User        User     @relation(fields: [createdBy], references: [id])
+
+  @@index([category])
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model Event {
+  id                     String                   @id
+  title                  String
+  description            String
+  location               String
+  startDate              DateTime?
+  endDate                DateTime?
+  published              Boolean                  @default(false)
+  coverImage             String?
+  organizerId            String?
+  createdAt              DateTime                 @default(now())
+  updatedAt              DateTime
+  publishedAt            DateTime?
+  posterImage            String?
+  modality               String?
+  category               String?
+  gender                 String                   @default("BOTH")
+  isFree                 Boolean                  @default(false)
+  maxParticipants        Int?
+  registrationEnd        DateTime?
+  status                 String                   @default("DRAFT")
+  modalityId             String?
+  categoryId             String?
+  countryId              String?
+  stateId                String?
+  cityId                 String?
+  addressDetails         String?
+  zipCode                String?
+  latitude               Float?
+  longitude              Float?
+  regulationPdf          String?
+  slug                   String?                  @db.VarChar
+  locationUrl            String?
+  resultsFile            String?                  @db.VarChar
+  EventCategory          EventCategory?           @relation(fields: [categoryId], references: [id])
+  City                   City?                    @relation(fields: [cityId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  Country                Country?                 @relation(fields: [countryId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  EventModality          EventModality?           @relation(fields: [modalityId], references: [id])
+  User                   User?                    @relation(fields: [organizerId], references: [id])
+  State                  State?                   @relation(fields: [stateId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  EventDiscountCoupon    EventDiscountCoupon[]
+  EventPricingByCategory EventPricingByCategory[]
+  EventPricingTier       EventPricingTier[]
+  EventToCategory        EventToCategory[]
+  EventToGender          EventToGender[]
+  EventToModality        EventToModality[]
+  EventTopResult         EventTopResult[]
+  Registration           Registration[]
+  TempRegistration       TempRegistration[]
+
+  @@index([categoryId])
+  @@index([createdAt])
+  @@index([modalityId])
+  @@index([organizerId])
+}
+
+model EventCategory {
+  id                      String                    @id
+  name                    String
+  description             String?
+  active                  Boolean                   @default(true)
+  createdAt               DateTime                  @default(now())
+  updatedAt               DateTime
+  createdBy               String?
+  updatedBy               String?
+  Event                   Event[]
+  EventDiscountCoupon     EventDiscountCoupon[]
+  EventModalityToCategory EventModalityToCategory[]
+  EventPricingByCategory  EventPricingByCategory[]
+  EventToCategory         EventToCategory[]
+  EventTopResult          EventTopResult[]
+  ModalityCategoryGender  ModalityCategoryGender[]
+  RankingStageResult      RankingStageResult[]
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model EventCategory_backup {
+  id          String?
+  name        String?
+  description String?
+  modalityId  String?
+  active      Boolean?
+  createdAt   DateTime?
+  updatedAt   DateTime?
+  createdBy   String?
+  updatedBy   String?
+
+  @@ignore
+}
+
+model EventCouponUsage {
+  id                  String              @id
+  couponId            String
+  registrationId      String              @unique
+  discountAmount      Decimal             @db.Decimal(10, 2)
+  createdAt           DateTime            @default(now())
+  EventDiscountCoupon EventDiscountCoupon @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  Registration        Registration        @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+
+  @@index([couponId])
+}
+
+model EventDiscountCoupon {
+  id               String             @id
+  eventId          String
+  code             String
+  discount         Decimal            @db.Decimal(5, 2)
+  modalityId       String?
+  categoryId       String?
+  genderId         String?
+  maxUses          Int
+  usedCount        Int                @default(0)
+  active           Boolean            @default(true)
+  startDate        DateTime
+  endDate          DateTime
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime
+  EventCouponUsage EventCouponUsage[]
+  EventCategory    EventCategory?     @relation(fields: [categoryId], references: [id])
+  Event            Event              @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  Gender           Gender?            @relation(fields: [genderId], references: [id])
+  EventModality    EventModality?     @relation(fields: [modalityId], references: [id])
+  Registration     Registration[]
+
+  @@unique([eventId, code])
+  @@index([code])
+  @@index([eventId])
+}
+
+model EventModality {
+  id                      String                    @id
+  name                    String                    @unique
+  description             String?
+  active                  Boolean                   @default(true)
+  createdAt               DateTime                  @default(now())
+  updatedAt               DateTime
+  createdBy               String?
+  updatedBy               String?
+  Event                   Event[]
+  EventDiscountCoupon     EventDiscountCoupon[]
+  EventModalityToCategory EventModalityToCategory[]
+  EventPricingByCategory  EventPricingByCategory[]
+  EventToModality         EventToModality[]
+  ModalityCategoryGender  ModalityCategoryGender[]
+  RankingStageResult      RankingStageResult[]
+}
+
+model EventModalityToCategory {
+  modalityId    String
+  categoryId    String
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime
+  createdBy     String?
+  updatedBy     String?
+  EventCategory EventCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  EventModality EventModality @relation(fields: [modalityId], references: [id], onDelete: Cascade)
+
+  @@id([modalityId, categoryId])
+  @@index([categoryId])
+  @@index([modalityId])
+}
+
+model EventPricingByCategory {
+  id               String           @id
+  eventId          String
+  modalityId       String
+  categoryId       String
+  genderId         String
+  price            Decimal          @db.Decimal(10, 2)
+  tierId           String
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime
+  EventCategory    EventCategory    @relation(fields: [categoryId], references: [id])
+  Event            Event            @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  Gender           Gender           @relation(fields: [genderId], references: [id])
+  EventModality    EventModality    @relation(fields: [modalityId], references: [id])
+  EventPricingTier EventPricingTier @relation(fields: [tierId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, modalityId, categoryId, genderId, tierId], map: "EventPricingByCategory_eventId_modalityId_categoryId_genderId_t")
+  @@index([eventId])
+  @@index([modalityId, categoryId, genderId])
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model EventPricingTier {
+  id                     String                   @id
+  name                   String
+  description            String?
+  price                  Decimal                  @db.Decimal(10, 2)
+  startDate              DateTime
+  endDate                DateTime
+  maxEntries             Int?
+  active                 Boolean                  @default(true)
+  eventId                String
+  createdAt              DateTime                 @default(now())
+  updatedAt              DateTime
+  endTime                String?                  @db.VarChar(5)
+  EventPricingByCategory EventPricingByCategory[]
+  Event                  Event                    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+  @@index([startDate, endDate])
+}
+
+model EventToCategory {
+  id            String        @id
+  eventId       String
+  categoryId    String
+  createdAt     DateTime      @default(now())
+  EventCategory EventCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  Event         Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, categoryId])
+  @@index([categoryId])
+  @@index([eventId])
+}
+
+model EventToGender {
+  id        String   @id
+  eventId   String
+  genderId  String
+  createdAt DateTime @default(now())
+  Event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  Gender    Gender   @relation(fields: [genderId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, genderId])
+  @@index([eventId])
+  @@index([genderId])
+}
+
+model EventToModality {
+  id            String        @id
+  eventId       String
+  modalityId    String
+  createdAt     DateTime      @default(now())
+  Event         Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  EventModality EventModality @relation(fields: [modalityId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, modalityId])
+  @@index([eventId])
+  @@index([modalityId])
+}
+
+model EventTopResult {
+  id            String        @id
+  eventId       String
+  categoryId    String
+  position      Int
+  userId        String?
+  athleteName   String
+  clubId        String?
+  clubName      String?
+  result        String
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime
+  EventCategory EventCategory @relation(fields: [categoryId], references: [id])
+  Club          Club?         @relation(fields: [clubId], references: [id])
+  Event         Event         @relation(fields: [eventId], references: [id])
+  User          User?         @relation(fields: [userId], references: [id])
+
+  @@index([categoryId])
+  @@index([clubId])
+  @@index([eventId])
+  @@index([userId])
+}
+
+model FiliationAnnualConfig {
+  id                  String    @id
+  year                Int       @unique
+  initialFilingFee    Decimal   @default(100.00) @db.Decimal(10, 2)
+  renewalFee          Decimal   @default(80.00) @db.Decimal(10, 2)
+  clubChangeStatusFee Decimal   @default(50.00) @db.Decimal(10, 2)
+  isActive            Boolean?  @default(true)
+  createdAt           DateTime? @default(now()) @db.Timestamptz(6)
+  updatedAt           DateTime? @default(now()) @db.Timestamptz(6)
+  createdBy           String?
+  updatedBy           String?
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model FiliationBanner {
+  id             String   @id
+  type           String
+  image          String
+  title          String
+  buttonText     String?
+  buttonUrl      String?
+  buttonPosition String   @default("bottom-right")
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime
+  federationId   String?
+
+  @@index([active])
+  @@index([type])
+}
+
+model FiliationCategory {
+  id                 String               @id
+  name               String               @unique
+  active             Boolean              @default(true)
+  order              Int                  @default(0)
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime
+  createdBy          String?
+  updatedBy          String?
+  ModalityToCategory ModalityToCategory[]
+}
+
+model FiliationConfig {
+  id                        String   @id @default("default-filiation")
+  postPaymentInstructions   String
+  updatedAt                 DateTime
+  updatedBy                 String?
+  prePaymentInstructions    String?
+  termsAndConditions        String?
+  documentationRequirements Json?
+  paymentMethods            String[] @default(["PIX", "CREDIT_CARD", "BOLETO"])
+  paymentGateways           String[] @default(["MERCADOPAGO"])
+  notificationSettings      Json?
+  filiationPeriod           Json?
+  renewalInstructions       String?
+  isActive                  Boolean? @default(true)
+  faqContent                Json?
+  contactInfo               Json?
+  requiredFields            String[] @default([])
+  priceSettings             Json?
+  discountRules             Json?
+  documentValidityPeriod    Int?
+  approvalWorkflow          Json?
+}
+
+model FiliationModality {
+  id                 String               @id
+  name               String               @unique
+  price              Decimal              @db.Decimal(10, 2)
+  active             Boolean              @default(true)
+  order              Int                  @default(0)
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime
+  createdBy          String?
+  updatedBy          String?
+  ModalityToCategory ModalityToCategory[]
+}
+
+model FooterConfig {
+  id         String       @id @default("default-footer")
+  logo       String       @default("/images/logo-fgc.png")
+  background String       @default("#08285d")
+  hoverColor String       @default("#177cc3")
+  textColor  String       @default("#ffffff")
+  isActive   Boolean      @default(true)
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime
+  createdBy  String?
+  updatedBy  String?
+  cidade     String?      @default("Goi├ónia")
+  cnpj       String?      @default("XX.XXX.XXX/0001-XX")
+  endereco   String?      @default("Rua XX, no XXX")
+  estado     String?      @default("GO")
+  email      String?      @default("contato@fgc.org.br")
+  telefone   String?      @default("(62) 3000-0000")
+  whatsapp   String?      @default("(62) 90000-0000")
+  FooterMenu FooterMenu[]
+}
+
+model FooterMenu {
+  id           String       @id
+  label        String
+  url          String
+  order        Int          @default(0)
+  isActive     Boolean      @default(true)
+  requireAuth  Boolean      @default(false)
+  roles        String[]
+  footerId     String
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime
+  createdBy    String?
+  updatedBy    String?
+  FooterConfig FooterConfig @relation(fields: [footerId], references: [id])
+
+  @@index([footerId])
+}
+
+model GalleryEvent {
+  id           String         @id
+  title        String
+  description  String?
+  modality     String
+  category     String
+  date         DateTime       @db.Timestamp(6)
+  slug         String         @unique
+  createdAt    DateTime       @default(now()) @db.Timestamp(6)
+  updatedAt    DateTime       @db.Timestamp(6)
+  GalleryImage GalleryImage[]
+
+  @@index([modality, category])
+}
+
+model GalleryImage {
+  id           String       @id
+  filename     String
+  url          String
+  thumbnail    String
+  size         Int
+  eventId      String
+  createdAt    DateTime     @default(now()) @db.Timestamp(6)
+  updatedAt    DateTime     @db.Timestamp(6)
+  GalleryEvent GalleryEvent @relation(fields: [eventId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([eventId])
+}
+
+model Gender {
+  id                     String                   @id
+  name                   String
+  code                   String                   @unique
+  active                 Boolean                  @default(true)
+  createdAt              DateTime                 @default(now())
+  updatedAt              DateTime
+  EventDiscountCoupon    EventDiscountCoupon[]
+  EventPricingByCategory EventPricingByCategory[]
+  EventToGender          EventToGender[]
+  ModalityCategoryGender ModalityCategoryGender[]
+}
+
+model HeaderConfig {
+  id         String       @id @default("default-header")
+  logo       String       @default("/images/logo-fgc.png")
+  background String       @default("#08285d")
+  hoverColor String       @default("#177cc3")
+  textColor  String       @default("#ffffff")
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime
+  createdBy  String?
+  isActive   Boolean      @default(true)
+  updatedBy  String?
+  HeaderMenu HeaderMenu[]
+}
+
+model HeaderMenu {
+  id           String       @id
+  label        String
+  url          String
+  order        Int          @default(0)
+  isActive     Boolean      @default(true)
+  headerId     String
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime
+  createdBy    String?
+  requireAuth  Boolean      @default(false)
+  roles        String[]
+  updatedBy    String?
+  HeaderConfig HeaderConfig @relation(fields: [headerId], references: [id])
+
+  @@index([headerId])
+}
+
+model Indicator {
+  id              String   @id
+  title           String
+  value           String
+  icon            String?
+  order           Int
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime
+  createdBy       String?
+  updatedBy       String?
+  subtitle        String?
+  iconColor       String?  @db.VarChar(50)
+  backgroundColor String?  @db.VarChar(50)
+  textColor       String?  @db.VarChar(50)
+}
+
+model LegalDocuments {
+  id        String   @id
+  type      String   @unique
+  title     String
+  content   String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime
+  createdBy String?
+  updatedBy String?
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model ModalityCategoryGender {
+  id            String        @id
+  modalityId    String
+  categoryId    String
+  genderId      String
+  active        Boolean       @default(true)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime
+  createdBy     String?
+  updatedBy     String?
+  EventCategory EventCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  Gender        Gender        @relation(fields: [genderId], references: [id], onDelete: Cascade)
+  EventModality EventModality @relation(fields: [modalityId], references: [id], onDelete: Cascade)
+
+  @@unique([modalityId, categoryId, genderId])
+  @@index([categoryId])
+  @@index([genderId])
+  @@index([modalityId])
+}
+
+model ModalityToCategory {
+  modalityId        String
+  categoryId        String
+  FiliationCategory FiliationCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  FiliationModality FiliationModality @relation(fields: [modalityId], references: [id], onDelete: Cascade)
+
+  @@id([modalityId, categoryId])
+  @@index([categoryId])
+}
+
+model News {
+  id             String           @id
+  title          String
+  slug           String           @unique
+  content        String
+  excerpt        String?
+  coverImage     String?
+  published      Boolean          @default(false)
+  authorId       String
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime
+  publishedAt    DateTime?
+  User           User             @relation(fields: [authorId], references: [id])
+  CategoryToNews CategoryToNews[]
+  newsimage      newsimage[]
+
+  @@index([authorId])
+  @@index([publishedAt])
+}
+
+model Notification {
+  id                  String                @id
+  type                String
+  recipient           String
+  priority            String                @default("normal")
+  status              String                @default("pending")
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime
+  NotificationAttempt NotificationAttempt[]
+
+  @@index([createdAt])
+  @@index([type, status])
+}
+
+model NotificationAttempt {
+  id             String       @id
+  notificationId String
+  channel        String
+  success        Boolean
+  error          String?
+  providerId     String?
+  createdAt      DateTime     @default(now())
+  Notification   Notification @relation(fields: [notificationId], references: [id])
+
+  @@index([channel, success])
+  @@index([notificationId])
+}
+
+model NotificationConfig {
+  id              String   @id
+  whatsappEnabled Boolean  @default(false)
+  emailEnabled    Boolean  @default(true)
+  webhookEnabled  Boolean  @default(false)
+  whatsappToken   String?
+  whatsappPhoneId String?
+  webhookUrl      String?
+  maxRetries      Int      @default(3)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime
+}
+
+model NotificationLog {
+  id        String   @id
+  type      String
+  recipient String
+  channel   String
+  status    String
+  error     String?
+  metadata  Json?
+  sentAt    DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime
+
+  @@index([sentAt])
+  @@index([type, status, channel])
+}
+
+model NotificationTemplate {
+  id        String   @id
+  type      String
+  channel   String
+  name      String
+  content   String
+  variables String[]
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime
+
+  @@unique([type, channel])
+}
+
+model Partner {
+  id        String   @id
+  name      String
+  logo      String
+  link      String?
+  order     Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime
+  createdBy String?
+  updatedBy String?
+
+  @@index([order, active])
+}
+
+model PasswordReset {
+  id        String    @id
+  email     String
+  token     String    @unique
+  expiresAt DateTime
+  createdAt DateTime  @default(now())
+  userId    String?   @unique
+  active    Boolean?  @default(true)
+  updatedAt DateTime?
+  User      User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+}
+
+model Payment {
+  id                   String                 @id
+  provider             String
+  status               String
+  paymentMethod        String
+  amount               Decimal                @db.Decimal(10, 2)
+  currency             String
+  athleteId            String?
+  clubId               String?
+  registrationId       String?
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime
+  externalId           String                 @unique
+  paymentData          Json
+  AthleteStatusHistory AthleteStatusHistory[]
+  Athlete              Athlete?               @relation(fields: [athleteId], references: [id])
+  Club                 Club?                  @relation(fields: [clubId], references: [id])
+  Registration         Registration?          @relation(fields: [registrationId], references: [id])
+
+  @@index([athleteId])
+  @@index([clubId])
+  @@index([createdAt])
+  @@index([registrationId])
+  @@index([status])
+}
+
+model PaymentGatewayConfig {
+  id                 String               @id
+  name               String
+  provider           String
+  active             Boolean              @default(true)
+  priority           Int                  @default(0)
+  allowedMethods     String[]
+  entityTypes        String[]
+  checkoutType       String               @default("REDIRECT")
+  sandbox            Boolean              @default(false)
+  webhook            Json?
+  urls               Json?
+  credentials        Json
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime
+  createdBy          String
+  updatedBy          String
+  PaymentTransaction PaymentTransaction[]
+
+  @@index([priority])
+  @@index([provider, active])
+}
+
+model PaymentHistory {
+  id                 String             @id
+  transactionId      String
+  status             PaymentStatus
+  description        String
+  createdAt          DateTime           @default(now())
+  PaymentTransaction PaymentTransaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model PaymentTransaction {
+  id                   String               @id
+  gatewayConfigId      String
+  entityId             String
+  amount               Decimal              @db.Decimal(10, 2)
+  description          String?
+  paymentMethod        PaymentMethod
+  paymentUrl           String?
+  externalId           String?
+  metadata             Json?
+  expiresAt            DateTime?
+  paidAt               DateTime?
+  canceledAt           DateTime?
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime
+  athleteId            String?
+  protocol             String               @unique
+  status               PaymentStatus        @default(PENDING)
+  entityType           String
+  PaymentHistory       PaymentHistory[]
+  Athlete              Athlete?             @relation(fields: [athleteId], references: [id])
+  PaymentGatewayConfig PaymentGatewayConfig @relation(fields: [gatewayConfigId], references: [id])
+
+  @@index([createdAt])
+  @@index([protocol])
+  @@index([status])
+}
+
+model Protocol {
+  id        String   @id
+  number    String   @unique
+  type      String
+  entityId  String
+  paymentId String
+  status    String
+  metadata  Json
+  year      Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime
+}
+
+model ProtocolSequence {
+  id        String   @id
+  type      String
+  year      Int
+  sequence  Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime
+
+  @@unique([type, year])
+}
+
+model Ranking {
+  id                 String               @id
+  athleteId          String
+  modality           String
+  category           String
+  gender             String
+  points             Int
+  position           Int
+  city               String
+  team               String?
+  season             Int
+  updatedAt          DateTime             @db.Timestamp(6)
+  createdAt          DateTime             @default(now()) @db.Timestamp(6)
+  Athlete            Athlete              @relation(fields: [athleteId], references: [id])
+  RankingStageResult RankingStageResult[]
+
+  @@unique([athleteId, modality, category, gender, season])
+  @@index([athleteId])
+  @@index([modality, category, gender])
+  @@index([season])
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model RankingCategory {
+  id                   String                 @id
+  name                 String
+  modalityId           String
+  description          String?
+  active               Boolean                @default(true)
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime
+  RankingModality      RankingModality        @relation(fields: [modalityId], references: [id])
+  RankingConfiguration RankingConfiguration[]
+
+  @@unique([name, modalityId])
+  @@index([modalityId])
+}
+
+model RankingConfiguration {
+  id              String          @id
+  name            String
+  modalityId      String
+  categoryId      String
+  gender          String
+  season          Int
+  active          Boolean         @default(true)
+  createdAt       DateTime        @default(now()) @db.Timestamp(6)
+  updatedAt       DateTime        @db.Timestamp(6)
+  RankingCategory RankingCategory @relation(fields: [categoryId], references: [id])
+  RankingModality RankingModality @relation(fields: [modalityId], references: [id])
+  RankingEntry    RankingEntry[]
+
+  @@unique([modalityId, categoryId, gender, season], map: "RankingConfiguration_unique_ranking")
+  @@index([categoryId])
+  @@index([modalityId])
+}
+
+model RankingEntry {
+  id                   String               @id
+  configurationId      String
+  athleteId            String
+  points               Int
+  position             Int
+  city                 String
+  team                 String?
+  createdAt            DateTime             @default(now()) @db.Timestamp(6)
+  updatedAt            DateTime             @db.Timestamp(6)
+  Athlete              Athlete              @relation(fields: [athleteId], references: [id])
+  RankingConfiguration RankingConfiguration @relation(fields: [configurationId], references: [id])
+
+  @@unique([configurationId, athleteId], map: "RankingEntry_unique_athlete")
+  @@index([athleteId])
+  @@index([configurationId])
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model RankingModality {
+  id                   String                 @id
+  name                 String                 @unique
+  description          String?
+  active               Boolean                @default(true)
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime
+  RankingCategory      RankingCategory[]
+  RankingConfiguration RankingConfiguration[]
+}
+
+model RankingStageResult {
+  id            String         @id
+  rankingId     String
+  athleteId     String
+  modality      String
+  category      String
+  gender        String
+  stageName     String
+  position      Int
+  points        Int
+  season        Int
+  date          DateTime
+  createdAt     DateTime       @default(now())
+  modalityId    String?
+  categoryId    String?
+  entryId       String?
+  Athlete       Athlete        @relation(fields: [athleteId], references: [id])
+  EventCategory EventCategory? @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  EventModality EventModality? @relation(fields: [modalityId], references: [id], onDelete: Restrict)
+  Ranking       Ranking        @relation(fields: [rankingId], references: [id])
+
+  @@index([athleteId])
+  @@index([categoryId])
+  @@index([entryId])
+  @@index([modalityId])
+  @@index([modality, category, gender])
+  @@index([rankingId])
+  @@index([season])
+}
+
+model Registration {
+  id                  String               @id
+  eventId             String
+  name                String
+  email               String
+  phone               String?
+  status              String               @default("PENDING")
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime
+  userId              String
+  cpf                 String?
+  protocol            String?              @unique
+  birthdate           DateTime?            @db.Timestamp(6)
+  modalityid          String?
+  categoryid          String?
+  genderid            String?
+  tierid              String?
+  addressdata         String?
+  couponId            String?
+  discountAmount      Decimal?             @db.Decimal(10, 2)
+  EventCouponUsage    EventCouponUsage?
+  Payment             Payment[]
+  EventDiscountCoupon EventDiscountCoupon? @relation(fields: [couponId], references: [id])
+  Event               Event                @relation(fields: [eventId], references: [id])
+  User                User                 @relation(fields: [userId], references: [id])
+
+  @@index([couponId])
+  @@index([eventId])
+  @@index([status])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  User         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model SmallBanner {
+  id        String   @id
+  title     String
+  image     String
+  link      String?
+  position  Int
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime
+  createdBy String?
+  updatedBy String?
+}
+
+model State {
+  id        String   @id
+  name      String
+  code      String
+  countryId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime
+  City      City[]
+  Event     Event[]
+  Country   Country  @relation(fields: [countryId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([countryId])
+}
+
+model TempRegistration {
+  id          String    @id
+  eventId     String
+  name        String
+  email       String
+  document    String?
+  phone       String?
+  birthDate   DateTime?
+  modalityId  String
+  categoryId  String
+  genderId    String
+  tierId      String
+  addressData String?
+  createdAt   DateTime  @default(now())
+  expiresAt   DateTime
+  cpf         String?
+  birthdate   DateTime? @db.Timestamp(6)
+  modalityid  String?
+  categoryid  String?
+  genderid    String?
+  tierid      String?
+  addressdata String?
+  Event       Event     @relation(fields: [eventId], references: [id])
+
+  @@index([eventId])
+  @@index([expiresAt])
+}
+
+model User {
+  id                                       String           @id
+  name                                     String?
+  email                                    String?          @unique
+  emailVerified                            DateTime?
+  image                                    String?
+  password                                 String
+  role                                     String           @default("USER")
+  isManager                                Boolean?         @default(false)
+  managedClubId                            String?
+  Account                                  Account[]
+  Athlete_Athlete_userIdToUser             Athlete?         @relation("Athlete_userIdToUser")
+  Athlete_Athlete_registeredByUserIdToUser Athlete[]        @relation("Athlete_registeredByUserIdToUser")
+  Document                                 Document[]
+  Event                                    Event[]
+  EventTopResult                           EventTopResult[]
+  News                                     News[]
+  PasswordReset                            PasswordReset?
+  Registration                             Registration[]
+  Session                                  Session[]
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model CategoryToNews {
+  A        String
+  B        String
+  Category Category @relation(fields: [A], references: [id], onDelete: Cascade)
+  News     News     @relation(fields: [B], references: [id], onDelete: Cascade)
+
+  @@id([A, B], map: "_CategoryToNews_AB_pkey")
+  @@index([B], map: "_CategoryToNews_B_index")
+  @@map("_CategoryToNews")
+}
+
+model newsimage {
+  id          String   @id
+  news_id     String
+  url         String
+  alt         String?
+  image_order Int      @default(0)
+  created_at  DateTime @default(now())
+  News        News     @relation(fields: [news_id], references: [id], onDelete: Cascade)
+
+  @@index([news_id])
+}
+
+model payment_system_config {
+  id                 String   @id @default("payment-config")
+  notificationEmails String[]
+  updatedAt          DateTime
+}
+
+model CalendarEvent {
+  id            String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  title         String   @db.VarChar(255)
+  description   String?
+  startdate     DateTime @db.Timestamp(6)
+  enddate       DateTime @db.Timestamp(6)
+  modality      String   @db.VarChar(100)
+  category      String   @db.VarChar(100)
+  city          String   @db.VarChar(100)
+  uf            String   @db.VarChar(2)
+  status        String   @db.VarChar(50)
+  regulationpdf String?
+  website       String?
+  imageurl      String?
+  highlight     Boolean? @default(false)
+  createdat     DateTime @default(now()) @db.Timestamp(6)
+  updatedat     DateTime @default(now()) @db.Timestamp(6)
+}
+
+model Sponsor {
+  id        String   @id
+  name      String
+  logo      String
+  link      String?
+  order     Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime
+  createdBy String?
+  updatedBy String?
+
+  @@index([order, active])
+}
+
+model EmailVerification {
+  id        String   @id
+  userId    String
+  token     String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime
+
+  @@index([token])
+}
+
+enum PaymentEntityType {
+  ATHLETE_MEMBERSHIP
+  CLUB_MEMBERSHIP
+  EVENT_REGISTRATION
+  CLUB_CHANGE
+  ATHLETE_REGISTRATION
+}
+
+enum PaymentGateway {
+  MERCADOPAGO
+  PAGSEGURO
+  ASAAS
+  PAGHIPER
+  INFINITPAY
+}
+
+enum PaymentMethod {
+  CREDIT_CARD
+  DEBIT_CARD
+  BOLETO
+  PIX
+}
+
+enum PaymentProvider {
+  MERCADOPAGO
+  PAGSEGURO
+  ASAAS
+  PAGHIPER
+  INFINITPAY
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  PAID
+  FAILED
+  REFUNDED
+  CANCELLED
+}

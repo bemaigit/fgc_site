@@ -1,0 +1,9 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "@/env.mjs": ["src/__mocks__/env-mock.js"]
+    }
+  }
+}

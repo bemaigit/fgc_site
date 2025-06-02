@@ -1,0 +1,41 @@
+# Substitua "SEU-ID-DO-TUNEL" pelo ID obtido no comando "cloudflared tunnel list"
+tunnel: d70ed630-8a35-4d77-b781-45678d0b7ddc
+credentials-file: /etc/cloudflared/d70ed630-8a35-4d77-b781-45678d0b7ddc.json
+
+# Configurações de protocolo e timeout
+protocol: http2
+retries: 5
+no-autoupdate: true
+
+# Timeout settings
+timeout: 5m
+grace-period: 30s
+
+# Configuração dos serviços
+ingress:
+  # Aplicação Next.js
+  - hostname: dev.bemai.com.br
+    service: http://host.docker.internal:3000
+    originRequest:
+      connectTimeout: 30s
+      disableChunkedEncoding: false
+      keepAliveTimeout: 1m30s
+      readTimeout: 30s
+      
+  # Evolution API para WhatsApp (usando o nome correto do container)
+  - hostname: whatsapp.dev.bemai.com.br
+    service: http://evolution-api:8080
+  
+  # MinIO (usando o nome correto do container)
+  - hostname: storage.dev.bemai.com.br
+    service: http://fgc_02-minio-1:9000
+    originRequest:
+      originServerName: storage.dev.bemai.com.br
+      noTLSVerify: true
+      disableChunkedEncoding: true
+      connectTimeout: 30s
+      tlsTimeout: 20s
+      keepAliveTimeout: 60s
+  
+  # Qualquer outra solicitação retorna 404
+  - service: http_status:404

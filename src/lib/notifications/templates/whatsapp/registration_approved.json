@@ -1,0 +1,38 @@
+{
+  "name": "registration_approved",
+  "language": "pt_BR",
+  "category": "TRANSACTIONAL",
+  "components": [
+    {
+      "type": "HEADER",
+      "format": "TEXT",
+      "text": "Filiação Aprovada! 🚴",
+      "example": {
+        "header_text": ["Filiação Aprovada! 🚴"]
+      }
+    },
+    {
+      "type": "BODY",
+      "text": "Olá {{1}},\n\nSua filiação foi aprovada com sucesso!\n\nCategoria: {{2}}\nValidade: {{3}}\n\nAgora você pode participar de todos os eventos da FGC. Acesse sua área do atleta para ver seu cartão de filiação digital.",
+      "example": {
+        "body_text": [
+          ["João Silva", "Elite", "08/02/2026"]
+        ]
+      }
+    },
+    {
+      "type": "FOOTER",
+      "text": "Federação Goiana de Ciclismo"
+    },
+    {
+      "type": "BUTTONS",
+      "buttons": [
+        {
+          "type": "URL",
+          "text": "Ver Cartão Digital",
+          "url": "{{card_url}}"
+        }
+      ]
+    }
+  ]
+}

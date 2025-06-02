@@ -1,0 +1,26 @@
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Instalar dependências do sistema necessárias para o Prisma e desenvolvimento
+RUN apk add --no-cache openssl libc6-compat git
+
+# Configurações de ambiente para desenvolvimento
+ENV NODE_ENV=development
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV SKIP_ENV_VALIDATION=true
+
+# Expor portas para a aplicação e para debug
+EXPOSE 3000
+EXPOSE 9229
+
+# Copiar o arquivo package.json e instalar dependências primeiro (para aproveitar o cache do Docker)
+COPY package*.json ./
+RUN npm install
+
+# Gerar Prisma Client
+COPY prisma ./prisma/
+RUN npx prisma generate
+
+# Iniciar em modo de desenvolvimento com hot-reload
+CMD ["npm", "run", "dev"]

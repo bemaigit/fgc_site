@@ -1,0 +1,7 @@
+# Adicione estas linhas ao final do seu arquivo .env
+
+# Email From (obrigatório para o sistema)
+EMAIL_FROM="${SMTP_FROM_EMAIL}"
+
+# Nível de logging (obrigatório, valores aceitos: debug, info, warn, error)
+LOG_LEVEL="info"
